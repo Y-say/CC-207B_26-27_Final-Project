@@ -1,0 +1,33 @@
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Secrets and credentials
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets/
+**/secrets/**
+*service-account*.json
+*firebase*.json
+
+# Local app config files
+local.properties
+android/key.properties
+
+# IDE / OS metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Common generated folders
+build/
+dist/
+out/
+coverage/
