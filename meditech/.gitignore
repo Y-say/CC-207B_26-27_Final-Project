@@ -47,21 +47,16 @@ app.*.map.json
 # Widget Preview related
 .widget_preview/
 
-# Environment and secrets
+# MediTech environment files and secrets
+env/*.json
 .env
 .env.*
 !.env.example
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
-*.jks
-local.properties
-android/key.properties
-secrets/
-**/secrets/**
 
-# Firebase / service account files
-*service-account*.json
-*firebase*.json
+# Supabase local environment
+supabase/.temp/
+supabase/.branches/
+
+# Generated files
+.flutter-plugins
+.packages

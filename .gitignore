@@ -31,3 +31,4 @@ build/
 dist/
 out/
 coverage/
+docs/decisions.md
