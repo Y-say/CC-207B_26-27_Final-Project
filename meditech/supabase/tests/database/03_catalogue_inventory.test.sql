@@ -62,12 +62,15 @@ select is(public.availability_of(0, 0, 20, false, now() - interval '8 days'),
   'unavailable'::public.availability_status, 'no stock beats Unconfirmed');
 
 -- The public view shows the active listing
-select is((select count(*) from public.public_availability), 1::bigint,
+select is((select count(*) from public.public_availability
+  where medicine_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'), 1::bigint,
   'public view shows the active listing');
 
 -- The public view hides a medicine once it is deactivated
-update public.medicines set status = 'inactive';
-select is((select count(*) from public.public_availability), 0::bigint,
+update public.medicines set status = 'inactive'
+where id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+select is((select count(*) from public.public_availability
+  where medicine_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'), 0::bigint,
   'public view hides inactive medicines');
 
 -- Undo all test data

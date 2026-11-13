@@ -11,6 +11,7 @@ jobs:
     defaults:
       run:
         working-directory: meditech
+
     steps:
       - uses: actions/checkout@v4
 
@@ -20,6 +21,9 @@ jobs:
 
       - name: Start database and apply migrations
         run: supabase db start
+
+      - name: Load demo data
+        run: supabase db reset
 
       - name: Run pgTAP tests
         run: supabase test db

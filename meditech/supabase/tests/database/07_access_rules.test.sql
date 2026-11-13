@@ -128,15 +128,23 @@ select set_config('request.jwt.claims', '{"sub":"66666666-6666-6666-6666-6666666
 select is((select count(*) from public.reservations), 0::bigint, 'admin cannot see reservations');
 select is((select count(*) from public.inventory_items), 0::bigint, 'admin cannot see inventory');
 select is((select count(*) from public.audit_records), 1::bigint, 'admin sees audit records');
-select is((select count(*) from public.branches), 2::bigint, 'admin sees all branches');
+select is((select count(*) from public.branches
+  where id in ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')),
+  2::bigint, 'admin sees all branches');
 
 -- Guests see only the public views
 reset role;
 set local role anon;
 select set_config('request.jwt.claims', '', true);
-select is((select count(*) from public.branches), 0::bigint, 'guest cannot read the branches table');
-select is((select count(*) from public.public_branches), 2::bigint, 'guest sees approved pharmacies');
-select is((select count(*) from public.public_availability), 2::bigint, 'guest sees medicine availability');
+select is((select count(*) from public.branches
+          where id in ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')),
+  0::bigint, 'guest cannot read the branches table');
+select is((select count(*) from public.public_branches
+          where id in ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')),
+  2::bigint, 'guest sees approved pharmacies');
+select is((select count(*) from public.public_availability
+          where branch_id in ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')),
+  2::bigint, 'guest sees medicine availability');
 
 -- Undo all test data
 reset role;
