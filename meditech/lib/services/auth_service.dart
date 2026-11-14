@@ -24,8 +24,8 @@ abstract class AuthService {
   });
 
   Future<void> changePassword({
-  required String currentPassword,
-  required String newPassword,
+    required String currentPassword,
+    required String newPassword,
   });
 
   Future<void> signOut();
@@ -61,7 +61,8 @@ class SupabaseAuthService implements AuthService {
     }
 
     final signedIn = await _client.auth.setSession(refreshToken);
-    return _accountFrom(signedIn.session?.accessToken, body['account_type']);
+    final account = _accountFrom(signedIn.session?.accessToken, body['account_type']);
+    return account.copyWith(mustChangePassword: await _mustChangePassword());
   }
 
   // Create the login, then save the customer's profile
@@ -128,6 +129,18 @@ class SupabaseAuthService implements AuthService {
     } on PostgrestException catch (error) {
       throw AppFailure(error.message);
     }
+  }
+
+  // Read whether this person still has a temporary password
+  Future<bool> _mustChangePassword() async {
+    final id = _client.auth.currentUser?.id;
+    if (id == null) return false;
+    final row = await _client
+        .from('accounts')
+        .select('must_change_password')
+        .eq('id', id)
+        .maybeSingle();
+    return row?['must_change_password'] == true;
   }
 
   @override

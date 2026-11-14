@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-
-import '../sign_up/sign_up_screen.dart';
 import '../../../providers/session_providers.dart';
 import '../../../utils/app_failure.dart';
 import '../../../widgets/common/app_text_field.dart';
@@ -99,14 +98,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 TextButton(
-                    onPressed: () {
-                        Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                            builder: (context) => const SignUpScreen(),
-                        ),
-                        );
-                    },
-                    child: const Text('Create an account'),
+                  onPressed: () => context.push('/sign-up'),
+                  child: const Text('Create an account'),
                 ),
               ],
             ),

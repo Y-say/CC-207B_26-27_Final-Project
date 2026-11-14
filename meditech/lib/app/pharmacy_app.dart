@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../screens/pharmacy/sign_in/pharmacy_sign_in_screen.dart';
+import '../routes/pharmacy_routes.dart';
 import '../widgets/theme/app_theme.dart';
 
-// The pharmacy app opens on its sign-in screen
-class PharmacyApp extends StatelessWidget {
+class PharmacyApp extends ConsumerWidget {
   const PharmacyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
       title: 'MediTech Pharmacy',
       theme: AppTheme.light,
-      home: const PharmacySignInScreen(),
+      routerConfig: ref.watch(pharmacyRouterProvider),
     );
   }
 }

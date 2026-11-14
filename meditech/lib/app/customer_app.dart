@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../screens/customer/landing/landing_screen.dart';
+import '../routes/customer_routes.dart';
 import '../widgets/theme/app_theme.dart';
 
-// The customer phone app opens on the landing page
-class CustomerApp extends StatelessWidget {
+class CustomerApp extends ConsumerWidget {
   const CustomerApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
       title: 'MediTech',
       theme: AppTheme.light,
-      home: const LandingScreen(),
+      routerConfig: ref.watch(customerRouterProvider),
     );
   }
 }
