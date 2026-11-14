@@ -23,6 +23,11 @@ abstract class AuthService {
     required String password,
   });
 
+  Future<void> changePassword({
+  required String currentPassword,
+  required String newPassword,
+  });
+
   Future<void> signOut();
 }
 
@@ -92,6 +97,34 @@ class SupabaseAuthService implements AuthService {
       return _accountFrom(refreshed.session?.accessToken, 'customer');
     } on AuthException catch (error) {
       throw AppFailure(error.message);
+    } on PostgrestException catch (error) {
+      throw AppFailure(error.message);
+    }
+  }
+
+  // Check the current password, save the new one, then clear the temporary-password flag
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final email = _client.auth.currentUser?.email;
+    if (email == null) {
+      throw const AppFailure('Sign in before changing your password.');
+    }
+
+    try {
+      await _client.auth.signInWithPassword(
+        email: email,
+        password: currentPassword,
+      );
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+      await _client.rpc('finish_password_change');
+    } on AuthException catch (error) {
+      final message = error.message == 'Invalid login credentials'
+          ? 'Current password is wrong.'
+          : error.message;
+      throw AppFailure(message);
     } on PostgrestException catch (error) {
       throw AppFailure(error.message);
     }
