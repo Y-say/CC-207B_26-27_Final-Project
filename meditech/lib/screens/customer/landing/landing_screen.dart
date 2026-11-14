@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../widgets/theme/app_colors.dart';
 import '../../../widgets/theme/app_spacing.dart';
-import '../login/login_screen.dart';
 
 
 class LandingScreen extends StatelessWidget {
@@ -33,15 +33,8 @@ class LandingScreen extends StatelessWidget {
                 style: TextStyle(color: AppColors.textMuted, fontSize: 16),
               ),
               const Spacer(),
-              // Opens the sign-in screen
               FilledButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => const LoginScreen(),
-                    ),
-                  );
-                },
+                onPressed: () => context.push('/sign-in'),
                 child: const Text('Sign in'),
               ),
               const SizedBox(height: AppSpacing.md),

@@ -66,6 +66,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             currentPassword: _currentPassword.text,
             newPassword: _newPassword.text,
           );
+          ref.read(sessionProvider.notifier).passwordWasChanged();
       setState(() => _saved = true);
     } on AppFailure catch (error) {
       setState(() {
