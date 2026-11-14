@@ -1,3 +1,4 @@
+
 name: Database tests
 
 on:
@@ -27,3 +28,26 @@ jobs:
 
       - name: Run pgTAP tests
         run: supabase test db
+
+  flutter-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: meditech
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.7"
+          channel: stable
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Check code for problems
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
