@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.meditech"
+    namespace = "ph.meditech"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.meditech"
+        applicationId = "ph.meditech"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -28,6 +28,44 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
+
+    // AGP 9 disables resValues by default; the flavors below rely on resValue() for app_name
+    buildFeatures {
+        resValues = true
+    }
+
+       // Three apps (customer, pharmacy, admin), each in dev, staging, and prod versions
+   flavorDimensions += listOf("app", "env")
+   productFlavors {
+       create("customer") {
+           dimension = "app"
+           applicationIdSuffix = ".customer"
+           resValue("string", "app_name", "MediTech")
+       }
+       create("pharmacy") {
+           dimension = "app"
+           applicationIdSuffix = ".pharmacy"
+           resValue("string", "app_name", "MediTech Pharmacy")
+       }
+       create("admin") {
+           dimension = "app"
+           applicationIdSuffix = ".admin"
+           resValue("string", "app_name", "MediTech Admin")
+       }
+       create("dev") {
+           dimension = "env"
+           applicationIdSuffix = ".dev"
+           versionNameSuffix = "-dev"
+       }
+       create("staging") {
+           dimension = "env"
+           applicationIdSuffix = ".staging"
+           versionNameSuffix = "-staging"
+       }
+       create("prod") {
+           dimension = "env"
+       }
+   }
 
     buildTypes {
         release {
