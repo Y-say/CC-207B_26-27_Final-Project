@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../providers/session_providers.dart';
 import '../../../utils/app_failure.dart';
@@ -81,83 +82,115 @@ class _AdminSignInScreenState extends ConsumerState<AdminSignInScreen> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 480),
-                  child: ListView(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    children: [
-                      const SizedBox(height: AppSpacing.lg),
-                      const _MediTechMark(),
-                      const SizedBox(height: AppSpacing.xxl),
-                      Text(
-                        'Admin sign in',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      const Text(
-                        'Use your administrator username and password.',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 15),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      if (signedIn) ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Signed in as ${account.role ?? account.accountType}',
-                                style: const TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                            const NotificationBell(),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        FilledButton(
-                          onPressed: () => context.push('/audit'),
-                          child: const Text('Audit records'),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        OutlinedButton(
-                          onPressed: () async {
-                            await ref.read(sessionProvider.notifier).signOut();
-                            if (context.mounted) context.go('/');
-                          },
-                          child: const Text('Switch user'),
-                        ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xl,
+                      vertical: AppSpacing.md,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const _MediTechMark(),
                         const SizedBox(height: AppSpacing.lg),
-                      ] else ...[
-                        AppTextField(
-                          label: 'Username',
-                          controller: _username,
-                          textInputAction: TextInputAction.next,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        AppPasswordField(
-                          label: 'Password',
-                          controller: _password,
-                          errorText: _error,
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-                        FilledButton(
-                          onPressed: _busy ? null : _signIn,
-                          child: _busy
-                              ? const SizedBox(
-                                  height: 22,
-                                  width: 22,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('Sign in'),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        const Text(
-                          'Sessions sign out after 10 minutes of inactivity.',
+                        Text(
+                          'Admin sign in',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                          style: GoogleFonts.inter(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
+                            letterSpacing: -0.5,
+                          ),
                         ),
-                        const SizedBox(height: AppSpacing.lg),
+                        const SizedBox(height: AppSpacing.sm),
+                        const Text(
+                          'Use your administrator username and password.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 15),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        if (signedIn) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Signed in as ${account.role ?? account.accountType}',
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              const NotificationBell(),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          FilledButton(
+                            onPressed: () => context.push('/audit'),
+                            child: const Text('Audit records'),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          OutlinedButton(
+                            onPressed: () async {
+                              await ref.read(sessionProvider.notifier).signOut();
+                              if (context.mounted) context.go('/');
+                            },
+                            child: const Text('Switch user'),
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                        ] else ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xl,
+                              vertical: AppSpacing.xl,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(color: AppColors.border),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                AppTextField(
+                                  label: 'Username',
+                                  controller: _username,
+                                  textInputAction: TextInputAction.next,
+                                ),
+                                const SizedBox(height: AppSpacing.lg),
+                                AppPasswordField(
+                                  label: 'Password',
+                                  controller: _password,
+                                  errorText: _error,
+                                ),
+                                const SizedBox(height: AppSpacing.xl),
+                                FilledButton(
+                                  onPressed: _busy ? null : _signIn,
+                                  child: _busy
+                                      ? const SizedBox(
+                                          height: 22,
+                                          width: 22,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const Text('Sign in'),
+                                ),
+                                const SizedBox(height: AppSpacing.sm),
+                                const Text(
+                                  'Sessions sign out after 10 minutes of inactivity.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -175,6 +208,7 @@ class _MediTechMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Image.asset(
           'assets/images/Meditech Logo.png',
@@ -184,7 +218,7 @@ class _MediTechMark extends StatelessWidget {
         ),
         const SizedBox(width: AppSpacing.sm),
         Text(
-          'MediTech',
+          'MediTech Central',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w700,
