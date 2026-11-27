@@ -87,6 +87,7 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
               return CheckEmailScreen(
                 identifier: extra?['identifier'],
                 deliveryEmail: extra?['deliveryEmail'],
+                signInPath: extra?['signInPath'] ?? '/sign-in',
               );
             },
           ),
@@ -94,9 +95,11 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
             path: 'reset',
             builder: (context, state) {
               final extra = forgotPasswordRouteExtra(state.extra);
+              final id = extra?['identifier'] ??
+                  (state.extra is String ? state.extra as String : null);
               return ResetPasswordScreen(
-                identifier: extra?['identifier'] ??
-                    (state.extra is String ? state.extra as String : null),
+                identifier: id,
+                signInPath: extra?['signInPath'] ?? '/sign-in',
               );
             },
           ),
