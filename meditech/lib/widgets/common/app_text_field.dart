@@ -44,7 +44,7 @@ class AppTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text)),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.text)),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
@@ -57,6 +57,7 @@ class AppTextField extends StatelessWidget {
           obscureText: obscureText,
           maxLength: maxLength,
           inputFormatters: inputFormatters,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           decoration: InputDecoration(
             hintText: hint,
             errorText: errorText,
