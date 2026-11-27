@@ -141,6 +141,12 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                   label: const Text('Add medicine'),
                   style: TabletControls.actionFilled(),
                 ),
+                if (!widget.drawerInShell)
+                  IconButton(
+                    tooltip: 'Back to dashboard',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.arrow_back),
+                  ),
               ],
             ),
             const SizedBox(height: AppSpacing.lg),

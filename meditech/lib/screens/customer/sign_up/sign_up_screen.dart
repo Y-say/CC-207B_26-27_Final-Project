@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -21,6 +22,8 @@ class SignUpScreen extends ConsumerStatefulWidget {
 }
 
 class _SignUpScreenState extends ConsumerState<SignUpScreen> {
+  static final _phMobilePattern = RegExp(r'^09[0-9]{9}$');
+
   final _firstName = TextEditingController();
   final _middleName = TextEditingController();
   final _lastName = TextEditingController();
@@ -39,6 +42,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   String? _confirmPasswordError;
   String? _birthdateError;
   String? _formError;
+
+  bool get _isValidMobile => _phMobilePattern.hasMatch(_mobile.text.trim());
 
   @override
   void initState() {
@@ -60,6 +65,19 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
   void _onFieldsChanged() {
     setState(() {
+      final mobile = _mobile.text.trim();
+      if (mobile.isEmpty) {
+        _mobileError = null;
+      } else if ((mobile.length == 1 && mobile != '0') ||
+          (mobile.length >= 2 && !mobile.startsWith('09'))) {
+        _mobileError =
+            'Use a Philippine mobile number starting with 09 (11 digits, e.g. 09171234567).';
+      } else if (mobile.length == 11 && _isValidMobile) {
+        _mobileError = null;
+      } else {
+        _mobileError = null;
+      }
+
       if (_password.text.isNotEmpty &&
           _confirmPassword.text.isNotEmpty &&
           _password.text != _confirmPassword.text) {
@@ -112,6 +130,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         _confirmPassword.text.isEmpty) {
       return false;
     }
+    if (!_isValidMobile) return false;
     return _password.text == _confirmPassword.text;
   }
 
@@ -133,6 +152,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         _password.text.isEmpty ||
         _confirmPassword.text.isEmpty) {
       return 'Fill in all required fields.';
+    }
+    if (!_isValidMobile) {
+      return 'Enter a valid 11-digit Philippine mobile number starting with 09.';
     }
     if (_password.text != _confirmPassword.text) {
       return 'Passwords must match before you can create an account.';
@@ -586,6 +608,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                         controller: _mobile,
                         hint: '09XXXXXXXXX',
                         keyboardType: TextInputType.phone,
+                        maxLength: 11,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(11),
+                        ],
                         errorText: _mobileError,
                       ),
                       const SizedBox(height: AppSpacing.md),

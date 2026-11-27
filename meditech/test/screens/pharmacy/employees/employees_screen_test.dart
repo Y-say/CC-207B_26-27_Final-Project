@@ -30,6 +30,7 @@ class _FakeEmployeeService implements EmployeeService {
     String? middleName,
     required String lastName,
     required String username,
+    String? email,
     required String role,
     String? prcLicenseNo,
     DateTime? prcLicenseExpiry,
@@ -49,9 +50,10 @@ class _FakeEmployeeService implements EmployeeService {
       isActive: true,
     );
     items = [...items, created];
-    return const CreatedEmployee(
+    return CreatedEmployee(
       accountId: 'new-1',
       displayId: 'EMP-000099',
+      username: username,
       temporaryPassword: 'TempPass88',
     );
   }
@@ -117,6 +119,12 @@ class _FakeEmployeeService implements EmployeeService {
     required String firstName,
     String? middleName,
     required String lastName,
+  }) async {}
+
+  @override
+  Future<void> updateContactEmail({
+    required String employeeId,
+    required String email,
   }) async {}
 }
 

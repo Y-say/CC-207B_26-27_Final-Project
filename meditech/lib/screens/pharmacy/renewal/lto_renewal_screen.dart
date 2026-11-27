@@ -16,7 +16,7 @@ import '../../../widgets/theme/app_spacing.dart';
 class LtoRenewalScreen extends ConsumerWidget {
   const LtoRenewalScreen({super.key, this.onSignOut});
 
-  final VoidCallback? onSignOut; // routing connects this later
+  final VoidCallback? onSignOut;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

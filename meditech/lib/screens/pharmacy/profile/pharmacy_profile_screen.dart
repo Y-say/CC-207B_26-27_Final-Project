@@ -38,8 +38,15 @@ class _PharmacyProfileScreenState extends ConsumerState<PharmacyProfileScreen> {
           );
       await applyStaffAvatarRefresh(ref, storedPath: path);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo updated.')),
+      await showTabletMessageDialog(
+        context: context,
+        title: 'Profile photo updated',
+        bullets: const [
+          'Your photo appears in the app header.',
+          'PRC license is read-only on Profile—owners edit it under Employees.',
+        ],
+        isWarning: false,
+        buttonLabel: 'Done',
       );
     } on AppFailure catch (error) {
       if (!mounted) return;
@@ -101,7 +108,8 @@ class _PharmacyProfileScreenState extends ConsumerState<PharmacyProfileScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Your name and photo are shown in the header.',
+                      'Your name and photo are shown in the header. '
+                      'Edit profile opens a full page to change name, username, and Gmail.',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: AppColors.textMuted,
@@ -136,8 +144,12 @@ class _PharmacyProfileScreenState extends ConsumerState<PharmacyProfileScreen> {
                         ),
                       ),
                       icon: const Icon(Icons.edit_outlined, size: 20),
-                      label: const Text('Edit Profile'),
+                      label: const Text('Edit profile'),
                     ),
+                    if (profile.showsPrcLicenseSection) ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      _PrcLicenseCard(profile: profile),
+                    ],
                     const SizedBox(height: AppSpacing.xl),
                     const Text(
                       'Account Settings',
@@ -280,7 +292,8 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final username = profile.username?.isNotEmpty == true
         ? profile.username!
-        : (profile.email ?? '—');
+        : '—';
+    final contactEmail = profile.contactEmail;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -296,16 +309,95 @@ class _InfoCard extends StatelessWidget {
           _Row(icon: Icons.alternate_email, label: 'Username', value: username),
           const Divider(height: 1),
           _Row(
+            icon: Icons.mail_outline,
+            label: 'Email',
+            value: contactEmail ?? 'Not on file',
+          ),
+          const Divider(height: 1),
+          _Row(
             icon: Icons.tag,
             label: 'Employee ID',
             value: profile.employeeId.isNotEmpty ? profile.employeeId : '—',
           ),
-          if (profile.prcLicenseNo != null) ...[
+        ],
+      ),
+    );
+  }
+}
+
+class _PrcLicenseCard extends StatelessWidget {
+  const _PrcLicenseCard({required this.profile});
+
+  final PharmacyStaffProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final expiry = profile.prcLicenseExpiry;
+    final expiryText = expiry == null
+        ? '—'
+        : '${expiry.month.toString().padLeft(2, '0')}/'
+            '${expiry.day.toString().padLeft(2, '0')}/'
+            '${expiry.year}';
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+            child: Text(
+              'PRC license (personal)',
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.text,
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              'Read-only on Profile. The branch owner adds or verifies licenses under Employees.',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ),
+          const Divider(height: 1),
+          _Row(
+            icon: Icons.numbers,
+            label: 'License number',
+            value: profile.prcLicenseNo ?? 'Not on file',
+          ),
+          const Divider(height: 1),
+          _Row(icon: Icons.event_outlined, label: 'Expiry', value: expiryText),
+          const Divider(height: 1),
+          _Row(
+            icon: Icons.verified_outlined,
+            label: 'Status',
+            value: profile.licenseStatusLabel,
+          ),
+          if (profile.role == 'pharmacist' &&
+              profile.licenseStatus == 'pending') ...[
             const Divider(height: 1),
-            _Row(
-              icon: Icons.verified_outlined,
-              label: 'PRC license',
-              value: '${profile.prcLicenseNo} · ${profile.licenseStatusLabel}',
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Pending owner verification under Employees.',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ),
+          ],
+          if (profile.role == 'owner') ...[
+            const Divider(height: 1),
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Employees → your row → Update my license.',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
             ),
           ],
         ],

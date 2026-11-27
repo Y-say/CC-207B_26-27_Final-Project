@@ -11,7 +11,22 @@ import '../../../widgets/theme/app_spacing.dart';
 
 // Ask for an email or mobile number, then send reset instructions
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
-  const ForgotPasswordScreen({super.key});
+  const ForgotPasswordScreen({
+    super.key,
+    this.signInPath = '/sign-in',
+    this.subtitle =
+        "Enter the email linked to your account and we'll send you reset instructions.",
+    this.identifierLabel = 'Email address',
+    this.identifierHint = 'you@example.com',
+    this.noDeliveryMessage =
+        'No reset code was sent. Sign up in the customer app with your Gmail first, then use that exact email here. Demo @demo.meditech.dev addresses cannot receive mail. On a phone, run the app with env/prod.json (hosted Supabase), not env/dev.json.',
+  });
+
+  final String signInPath;
+  final String subtitle;
+  final String identifierLabel;
+  final String identifierHint;
+  final String noDeliveryMessage;
 
   @override
   ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -47,13 +62,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     });
 
     try {
-      await ref.read(authServiceProvider).sendPasswordReset(identifier: identifier);
-      if (mounted) {
-        context.push(
-          '/forgot-password/check-email',
-          extra: identifier,
-        );
+      final deliveryEmail = await ref
+          .read(authServiceProvider)
+          .sendPasswordReset(identifier: identifier);
+      if (!mounted) return;
+      if (deliveryEmail == null) {
+        setState(() => _error = widget.noDeliveryMessage);
+        return;
       }
+      context.push(
+        '/forgot-password/check-email',
+        extra: {
+          'identifier': identifier,
+          'deliveryEmail': deliveryEmail,
+          'signInPath': widget.signInPath,
+        },
+      );
     } on AppFailure catch (error) {
       setState(() {
         _offline = error.message == 'Could not reach Supabase.';
@@ -70,7 +94,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Back',
-          onPressed: () => context.canPop() ? context.pop() : context.go('/sign-in'),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go(widget.signInPath),
           icon: const Icon(Icons.arrow_back),
         ),
       ),
@@ -89,15 +114,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                const Text(
-                  "Enter the email linked to your account and we'll send you reset instructions.",
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 15),
+                Text(
+                  widget.subtitle,
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 AppTextField(
-                  label: 'Email address',
+                  label: widget.identifierLabel,
                   controller: _identifier,
-                  hint: 'you@example.com',
+                  hint: widget.identifierHint,
                   keyboardType: TextInputType.emailAddress,
                   errorText: _error,
                 ),
@@ -114,7 +139,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 TextButton(
-                  onPressed: () => context.go('/sign-in'),
+                  onPressed: () => context.go(widget.signInPath),
                   child: const Text('Back to login'),
                 ),
               ],

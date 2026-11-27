@@ -7,10 +7,13 @@ import '../../../providers/pharmacy_staff_providers.dart';
 import '../../../services/staff_profile_query.dart';
 import '../../../utils/app_failure.dart';
 import '../../../widgets/common/app_text_field.dart';
+import '../../../widgets/tablet/tablet_dialogs.dart';
 import '../../../widgets/theme/app_colors.dart';
 import '../../../widgets/theme/app_spacing.dart';
 
 final _namePattern = RegExp(r"^[A-Za-zÑñ .'-]{2,50}$");
+final _usernamePattern = RegExp(r'^[A-Za-z0-9_]{4,20}$');
+final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
 class PharmacyEditProfileScreen extends ConsumerStatefulWidget {
   const PharmacyEditProfileScreen({super.key});
@@ -26,9 +29,12 @@ class _PharmacyEditProfileScreenState
   final _firstName = TextEditingController();
   final _middleName = TextEditingController();
   final _lastName = TextEditingController();
+  final _username = TextEditingController();
+  final _email = TextEditingController();
   var _ready = false;
   var _busy = false;
   String? _error;
+  String? _savedContactEmail;
 
   @override
   void initState() {
@@ -41,6 +47,10 @@ class _PharmacyEditProfileScreenState
     _firstName.text = profile.firstName;
     _middleName.text = profile.middleName ?? '';
     _lastName.text = profile.lastName;
+    final user = profile.username?.trim();
+    _username.text = user ?? '';
+    _savedContactEmail = profile.contactEmail;
+    _email.text = profile.contactEmail ?? '';
     _ready = true;
   }
 
@@ -49,6 +59,8 @@ class _PharmacyEditProfileScreenState
     _firstName.dispose();
     _middleName.dispose();
     _lastName.dispose();
+    _username.dispose();
+    _email.dispose();
     super.dispose();
   }
 
@@ -58,17 +70,51 @@ class _PharmacyEditProfileScreenState
 
     setState(() => _busy = true);
     try {
+      final client = Supabase.instance.client;
       await updateMyStaffProfile(
-        Supabase.instance.client,
+        client,
         firstName: _firstName.text,
         middleName: _middleName.text,
         lastName: _lastName.text,
+        username: _username.text,
       );
+      final nextEmail = _email.text.trim();
+      final emailChanged =
+          nextEmail.isNotEmpty && nextEmail != (_savedContactEmail ?? '');
+      if (emailChanged) {
+        await updateMyStaffContactEmail(client, email: nextEmail);
+      }
       ref.invalidate(pharmacyStaffProfileProvider);
       if (!mounted) return;
+      final savedName = [
+        _firstName.text.trim(),
+        if (_middleName.text.trim().isNotEmpty) _middleName.text.trim(),
+        _lastName.text.trim(),
+      ].join(' ');
+      await showTabletMessageDialog(
+        context: context,
+        title: 'Profile updated',
+        bullets: [
+          savedName,
+          'Your display name and sign-in username were saved.',
+          if (emailChanged) 'Your contact email was updated.',
+          'PRC license is read-only here—edit it under Employees.',
+        ],
+        isWarning: false,
+        buttonLabel: 'Done',
+      );
+      if (!mounted) return;
       context.pop(true);
+    } on AppFailure catch (error) {
+      setState(() => _error = error.message);
     } on PostgrestException catch (error) {
-      setState(() => _error = AppFailure.fromPostgrest(error).message);
+      final message = error.message.toLowerCase();
+      if (message.contains('username') &&
+          (message.contains('unique') || message.contains('duplicate'))) {
+        setState(() => _error = 'That username is already taken. Choose another.');
+      } else {
+        setState(() => _error = AppFailure.fromPostgrest(error).message);
+      }
     } catch (error) {
       setState(() => _error = '$error');
     } finally {
@@ -97,6 +143,19 @@ class _PharmacyEditProfileScreenState
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.xl),
             children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _busy ? null : () => context.pop(false),
+                  icon: const Icon(Icons.arrow_back, size: 20),
+                  label: const Text('Back'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.text,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 'Edit profile',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -105,7 +164,8 @@ class _PharmacyEditProfileScreenState
               ),
               const SizedBox(height: 4),
               const Text(
-                'Update the name shown in the pharmacy app. Your username stays the same.',
+                'Update your name, sign-in username, and contact email. '
+                'You still sign in with your username and password.',
                 style: TextStyle(fontSize: 13, color: AppColors.textMuted),
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -147,6 +207,34 @@ class _PharmacyEditProfileScreenState
                         validator: (v) => _namePattern.hasMatch((v ?? '').trim())
                             ? null
                             : 'Enter 2 to 50 letters.',
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        label: 'Username',
+                        hint: 'Sign-in username',
+                        controller: _username,
+                        validator: (v) => _usernamePattern.hasMatch((v ?? '').trim())
+                            ? null
+                            : '4 to 20 letters, numbers, or underscores.',
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        label: 'Email (optional)',
+                        hint: 'name@gmail.com',
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) {
+                          final trimmed = (v ?? '').trim();
+                          if (trimmed.isEmpty) return null;
+                          return _emailPattern.hasMatch(trimmed)
+                              ? null
+                              : 'Enter a valid email.';
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Text(
+                        'Add or change Gmail here so you can use Forgot password on the branch sign-in screen.',
+                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                       ),
                       const SizedBox(height: AppSpacing.xl),
                       FilledButton(

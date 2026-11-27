@@ -725,52 +725,56 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
   // Edit and Deactivate (or Activate) side by side
   Widget _actionsCell(InventoryItem item) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        OutlinedButton(
-          onPressed: _busy
-              ? null
-              : () {
-                  if (widget.onEditItem != null) {
-                    widget.onEditItem!(item);
-                    return;
-                  }
-                  final useInline =
-                      MediaQuery.sizeOf(context).width >= 900;
-                  if (useInline) {
-                    setState(() => _editingItem = item);
-                  } else {
-                    _showEditDrawerOverlay(item);
-                  }
-                },
-          style: OutlinedButton.styleFrom(
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            minimumSize: const Size(0, 32),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          OutlinedButton(
+            onPressed: _busy
+                ? null
+                : () {
+                    if (widget.onEditItem != null) {
+                      widget.onEditItem!(item);
+                      return;
+                    }
+                    final useInline =
+                        MediaQuery.sizeOf(context).width >= 900;
+                    if (useInline) {
+                      setState(() => _editingItem = item);
+                    } else {
+                      _showEditDrawerOverlay(item);
+                    }
+                  },
+            style: OutlinedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            child: const Text('Edit'),
           ),
-          child: const Text('Edit'),
-        ),
-        const SizedBox(width: 4),
-        TextButton(
-          onPressed: _busy ? null : () => _setActive([item], !item.isActive),
-          style: TextButton.styleFrom(
-            visualDensity: VisualDensity.compact,
-            foregroundColor: item.isActive
-                ? AppColors.danger
-                : AppColors.primary,
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            minimumSize: const Size(0, 32),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          const SizedBox(width: 4),
+          TextButton(
+            onPressed: _busy ? null : () => _setActive([item], !item.isActive),
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              foregroundColor: item.isActive
+                  ? AppColors.danger
+                  : AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            child: Text(
+              item.isActive ? 'Deactivate' : 'Activate',
+            ),
           ),
-          child: Text(
-            item.isActive ? 'Deactivate' : 'Activate',
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

@@ -25,6 +25,32 @@ class DirectionsArgs {
   final String address;
   final LatLng destination;
   final bool fromOsmDirectory;
+
+  /// Route location with query params so directions still work if [extra] is dropped.
+  String get routeLocation {
+    final query = <String, String>{
+      'lat': destination.latitude.toString(),
+      'lng': destination.longitude.toString(),
+      'name': pharmacyName,
+      'address': address,
+      if (branchName.isNotEmpty) 'branch': branchName,
+      if (fromOsmDirectory) 'osm': '1',
+    };
+    return Uri(path: '/directions', queryParameters: query).toString();
+  }
+}
+
+DirectionsArgs? directionsArgsFromQuery(Map<String, String> query) {
+  final lat = double.tryParse(query['lat'] ?? '');
+  final lng = double.tryParse(query['lng'] ?? '');
+  if (lat == null || lng == null) return null;
+  return DirectionsArgs(
+    pharmacyName: query['name'] ?? 'Pharmacy',
+    branchName: query['branch'] ?? '',
+    address: query['address'] ?? '',
+    destination: LatLng(lat, lng),
+    fromOsmDirectory: query['osm'] == '1',
+  );
 }
 
 enum _TravelMode { vehicle, commute, walk }
@@ -797,58 +823,24 @@ class _DirectionsMap extends StatelessWidget {
               markers: [
                 Marker(
                   point: origin,
-                  width: navigating ? 36 : 28,
-                  height: navigating ? 36 : 28,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: routeBlue,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: navigating ? Colors.white : Colors.white,
-                        width: navigating ? 4 : 3,
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: navigating
-                        ? const Icon(
-                            Icons.navigation,
-                            color: Colors.white,
-                            size: 18,
-                          )
-                        : null,
+                  width: navigating ? 40 : 34,
+                  height: navigating ? 40 : 34,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    navigating ? Icons.navigation : Icons.my_location,
+                    color: routeBlue,
+                    size: navigating ? 36 : 30,
                   ),
                 ),
                 Marker(
                   point: destination,
                   width: 40,
                   height: 40,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'P',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
+                  alignment: Alignment.bottomCenter,
+                  child: const Icon(
+                    Icons.location_on,
+                    color: AppColors.primary,
+                    size: 40,
                   ),
                 ),
               ],

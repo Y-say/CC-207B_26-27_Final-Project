@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../screens/customer/assistant/assistant_screen.dart';
 import '../screens/customer/cart/cart_screen.dart';
 import '../screens/customer/customer_frame.dart';
+import '../screens/customer/forgot_password/forgot_password_route_extra.dart';
 import '../screens/customer/forgot_password/check_email_screen.dart';
 import '../screens/customer/forgot_password/forgot_password_screen.dart';
+import '../screens/customer/forgot_password/finish_recovery_password_screen.dart';
 import '../screens/customer/forgot_password/reset_password_screen.dart';
 import '../screens/customer/landing/landing_screen.dart';
 import '../screens/customer/login/login_screen.dart';
@@ -25,15 +27,15 @@ import '../screens/customer/sign_up/account_created_screen.dart';
 import '../screens/customer/sign_up/sign_up_screen.dart';
 import '../models/medicine.dart';
 import '../models/osm_listing.dart';
+import '../screens/customer/pharmacy/osm_directions_route_screen.dart';
 import '../screens/customer/pharmacy/osm_listing_details_screen.dart';
 import '../screens/shared/change_password_screen.dart';
 import '../screens/shared/notification_list_screen.dart';
 import '../models/customer_profile.dart';
 import '../providers/session_providers.dart';
+import 'customer_navigator_keys.dart';
+export 'customer_navigator_keys.dart';
 import 'password_redirect.dart';
-
-/// Full-screen customer flows pushed above [CustomerFrame] at `/home`.
-final customerRootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'customerRoot');
 
 // Pages a customer can open
 final customerRouterProvider = Provider<GoRouter>((ref) {
@@ -80,15 +82,31 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: 'check-email',
-            builder: (context, state) => CheckEmailScreen(
-              identifier: state.extra is String ? state.extra as String : null,
-            ),
+            builder: (context, state) {
+              final extra = forgotPasswordRouteExtra(state.extra);
+              return CheckEmailScreen(
+                identifier: extra?['identifier'],
+                deliveryEmail: extra?['deliveryEmail'],
+                signInPath: extra?['signInPath'] ?? '/sign-in',
+              );
+            },
           ),
           GoRoute(
             path: 'reset',
-            builder: (context, state) => ResetPasswordScreen(
-              identifier: state.extra is String ? state.extra as String : null,
-            ),
+            builder: (context, state) {
+              final extra = forgotPasswordRouteExtra(state.extra);
+              final id = extra?['identifier'] ??
+                  (state.extra is String ? state.extra as String : null);
+              return ResetPasswordScreen(
+                identifier: id,
+                signInPath: extra?['signInPath'] ?? '/sign-in',
+              );
+            },
+          ),
+          GoRoute(
+            path: 'complete',
+            parentNavigatorKey: customerRootNavigatorKey,
+            builder: (context, state) => const FinishRecoveryPasswordScreen(),
           ),
         ],
       ),
@@ -121,6 +139,11 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
         path: '/profile/notification-preferences',
         parentNavigatorKey: customerRootNavigatorKey,
         builder: (context, state) => const NotificationPreferencesScreen(),
+      ),
+      GoRoute(
+        path: '/profile/change-password',
+        parentNavigatorKey: customerRootNavigatorKey,
+        builder: (context, state) => const ChangePasswordScreen(),
       ),
       GoRoute(
         path: '/assistant',
@@ -189,32 +212,48 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/directions',
+        path: '/directions/osm/:listingId',
+        parentNavigatorKey: customerRootNavigatorKey,
         builder: (context, state) {
-          final extra = state.extra;
-          if (extra is! DirectionsArgs) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (context.mounted) context.go('/home');
-            });
-            return const Scaffold(body: SizedBox.shrink());
+          final id = state.pathParameters['listingId']!;
+          final initial = state.extra is OsmListing
+              ? state.extra as OsmListing
+              : null;
+          return OsmDirectionsRouteScreen(
+            listingId: id,
+            initialListing: initial,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/directions',
+        parentNavigatorKey: customerRootNavigatorKey,
+        builder: (context, state) {
+          final args = state.extra is DirectionsArgs
+              ? state.extra! as DirectionsArgs
+              : directionsArgsFromQuery(state.uri.queryParameters);
+          if (args == null) {
+            return const _DirectionsArgsMissing();
           }
           return DirectionsScreen(
-            pharmacyName: extra.pharmacyName,
-            branchName: extra.branchName,
-            address: extra.address,
-            destination: extra.destination,
-            fromOsmDirectory: extra.fromOsmDirectory,
+            pharmacyName: args.pharmacyName,
+            branchName: args.branchName,
+            address: args.address,
+            destination: args.destination,
+            fromOsmDirectory: args.fromOsmDirectory,
           );
         },
       ),
       GoRoute(
         path: '/map',
+        parentNavigatorKey: customerRootNavigatorKey,
         builder: (context, state) => PharmacyMapScreen(
           focusBranchId: state.uri.queryParameters['branch'],
         ),
       ),
       GoRoute(
         path: '/pharmacies/:branchId',
+        parentNavigatorKey: customerRootNavigatorKey,
         builder: (context, state) => PharmacyDetailsScreen(
           branchId: state.pathParameters['branchId']!,
           initialTitle: state.uri.queryParameters['name'],
@@ -222,6 +261,7 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/osm-listing/:id',
+        parentNavigatorKey: customerRootNavigatorKey,
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           final initial = state.extra is OsmListing
@@ -230,10 +270,39 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
           return OsmListingDetailsScreen(
             listingId: id,
             initialListing: initial,
-            onGetDirections: () => context.push('/map'),
           );
         },
       ),
     ],
   );
 });
+
+class _DirectionsArgsMissing extends StatelessWidget {
+  const _DirectionsArgsMissing();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Directions')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'We could not open directions for this pharmacy.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => context.pop(),
+                child: const Text('Go back'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

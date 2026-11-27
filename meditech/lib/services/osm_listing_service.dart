@@ -9,33 +9,66 @@ class OsmListingService {
 
   SupabaseClient get _db => _client ?? Supabase.instance.client;
 
-  Future<List<OsmListing>> fetchShownListings() async {
-    final rows = await _db
-        .from('osm_listings')
-        .select(
-          'id, osm_id, name, address, latitude, longitude, last_edited_there, status, synced_at',
-        )
-        .eq('status', 'shown')
-        .order('name', ascending: true);
+  static const _listingPublicColumns =
+      'id, osm_id, name, address, latitude, longitude, last_edited_there, '
+      'status, synced_at';
 
-    return (rows as List<dynamic>)
-        .map(
-          (row) => OsmListing.fromJson(Map<String, dynamic>.from(row as Map)),
-        )
-        .toList();
+  static const _listingPublicColumnsWithImage =
+      '$_listingPublicColumns, image_url';
+
+  bool _missingImageUrlColumn(PostgrestException error) {
+    final message = error.message.toLowerCase();
+    return message.contains('image_url') ||
+        error.code == '42703' ||
+        error.code == 'PGRST204';
+  }
+
+  List<OsmListing> _rowsToListings(List<dynamic> rows) => rows
+      .map(
+        (row) => OsmListing.fromJson(Map<String, dynamic>.from(row as Map)),
+      )
+      .toList();
+
+  Future<List<OsmListing>> fetchShownListings() async {
+    try {
+      final rows = await _db
+          .from('osm_listings')
+          .select(_listingPublicColumnsWithImage)
+          .eq('status', 'shown')
+          .order('name', ascending: true);
+
+      return _rowsToListings(rows as List<dynamic>);
+    } on PostgrestException catch (error) {
+      if (!_missingImageUrlColumn(error)) rethrow;
+      final rows = await _db
+          .from('osm_listings')
+          .select(_listingPublicColumns)
+          .eq('status', 'shown')
+          .order('name', ascending: true);
+      return _rowsToListings(rows as List<dynamic>);
+    }
   }
 
   Future<OsmListing?> fetchListingById(String id) async {
-    final row = await _db
-        .from('osm_listings')
-        .select(
-          'id, osm_id, name, address, latitude, longitude, last_edited_there, status, synced_at',
-        )
-        .eq('id', id)
-        .maybeSingle();
+    try {
+      final row = await _db
+          .from('osm_listings')
+          .select(_listingPublicColumnsWithImage)
+          .eq('id', id)
+          .maybeSingle();
 
-    if (row == null) return null;
-    return OsmListing.fromJson(Map<String, dynamic>.from(row));
+      if (row == null) return null;
+      return OsmListing.fromJson(Map<String, dynamic>.from(row));
+    } on PostgrestException catch (error) {
+      if (!_missingImageUrlColumn(error)) rethrow;
+      final row = await _db
+          .from('osm_listings')
+          .select(_listingPublicColumns)
+          .eq('id', id)
+          .maybeSingle();
+      if (row == null) return null;
+      return OsmListing.fromJson(Map<String, dynamic>.from(row));
+    }
   }
 
   Future<List<OsmListing>> findNearbyListings({
@@ -60,20 +93,29 @@ class OsmListingService {
   }
 
   Future<List<OsmListing>> fetchAllForAdmin() async {
-    final rows = await _db
-        .from('osm_listings')
-        .select(
-          'id, osm_id, name, address, latitude, longitude, last_edited_there, '
-          'status, hidden_reason, replaced_by_branch_id, synced_at, '
-          'branches:replaced_by_branch_id(pharmacy_name, branch_name)',
-        )
-        .order('name', ascending: true);
+    const adminWithImage =
+        '$_listingPublicColumns, hidden_reason, replaced_by_branch_id, '
+        'image_url, branches:replaced_by_branch_id(pharmacy_name, branch_name)';
+    const adminLegacy =
+        '$_listingPublicColumns, hidden_reason, replaced_by_branch_id, '
+        'branches:replaced_by_branch_id(pharmacy_name, branch_name)';
 
-    return (rows as List<dynamic>)
-        .map(
-          (row) => OsmListing.fromJson(Map<String, dynamic>.from(row as Map)),
-        )
-        .toList();
+    try {
+      final rows =
+          await _db.from('osm_listings').select(adminWithImage).order(
+            'name',
+            ascending: true,
+          );
+      return _rowsToListings(rows as List<dynamic>);
+    } on PostgrestException catch (error) {
+      if (!_missingImageUrlColumn(error)) rethrow;
+      final rows =
+          await _db.from('osm_listings').select(adminLegacy).order(
+            'name',
+            ascending: true,
+          );
+      return _rowsToListings(rows as List<dynamic>);
+    }
   }
 
   Future<void> hideListing({

@@ -130,8 +130,17 @@ export function medicineNotListedAnswer(): string {
   );
 }
 
+// Status / track / list — must use live reservations from the database, not how-to text.
+export function wantsLiveReservationData(message: string): boolean {
+  const lower = message.toLowerCase();
+  if (/how (do|to|can).*(place|make|submit).*reserv/i.test(lower)) return false;
+  return /track my|list my|show my|all my reserv|status of my|what.?s the status|how.?s my order|how are my reserv|order status|reservation status|when.*expire|what medicine did i|where.*pick up|what did i reserve/i
+    .test(lower);
+}
+
 // True when the customer wants app how-to help (answered with canned text, no Gemini)
 export function isAppHelp(message: string): boolean {
+  if (wantsLiveReservationData(message)) return false;
   // "Recommend a pharmacy for [specific medicine]" should use live offers via Gemini
   if (
     /recommend/i.test(message) &&
@@ -148,10 +157,13 @@ export function isAppHelp(message: string): boolean {
 export function appHelpAnswer(message: string): string {
   const lower = message.toLowerCase();
 
-  // Reservation workflow
-  if (/reserv|pickup code|ready for pickup|confirmed|how.*(order|place|submit)/.test(lower)) {
+  // Reservation workflow (not live status — that uses wantsLiveReservationData above)
+  if (
+    !wantsLiveReservationData(message) &&
+    /reserv|pickup code|ready for pickup|confirmed|how.*(order|place|submit)/.test(lower)
+  ) {
     return [
-      "Here's how reservations work in MediTech:",
+      "Reservation process in MediTech:",
       "1. Search for a medicine and open one listed in the app.",
       "2. Choose a pharmacy offer marked Available or Low Stock and add it to your cart.",
       "3. One pharmacy per cart. Sign in if you are still a guest.",
@@ -182,7 +194,7 @@ export function appHelpAnswer(message: string): string {
   if (/status|pending|confirmed|ready|rejected|expired|completed/.test(lower)) {
     return [
       "Reservation statuses in MediTech:",
-      ...appGuide.reservation_statuses.map((s) => `• ${s}`),
+      ...appGuide.reservation_statuses.map((s) => `- ${s}`),
     ].join("\n");
   }
 
@@ -235,7 +247,7 @@ export function appHelpAnswer(message: string): string {
       "- Sign in with your email address or mobile number and password.",
       "- New? Tap Create account on the sign-in screen. You must be 18 or older to register.",
       "- Guests can browse and search, but need to sign in to use the cart, place reservations, and view reservation history.",
-      "- Forgot your password? Tap Forgot password on the sign-in screen for a reset link by email.",
+      "- Forgot your password? Tap Forgot password on the sign-in screen for a 6-digit code by email.",
       "- Change your profile details under Profile → Edit Profile.",
       "- Change your password under Profile → Change Password.",
     ].join("\n");
@@ -271,17 +283,17 @@ export function appHelpAnswer(message: string): string {
 export function refuseReason(message: string): string | null {
   if (dosingOrDiagnosis.test(message)) {
     return (
-      "I can't help with diagnosis, dosing, or treatment advice. " +
-      "Please ask a pharmacist or doctor. " +
-      "I can help you search for medicines on MediTech, check availability, or explain how reservations work."
+      "I am not able to provide diagnosis, dosing, or treatment advice. " +
+      "Please consult a pharmacist or physician. " +
+      "I can assist with finding medicines on MediTech, checking availability, or explaining how reservations work."
     );
   }
   if (outsideMeditech.test(message)) {
-    return "I can only help with the MediTech app: finding medicines, pharmacies, your reservations, and how to use the app.";
+    return "I can assist only with the MediTech app: medicines, pharmacies, your reservations, and how to use the app.";
   }
   // If nothing in the message relates to MediTech at all, refuse
   if (!aboutMeditech.test(message)) {
-    return "I can only help with the MediTech app: finding medicines, pharmacies, your reservations, and how to use the app.";
+    return "I can assist only with the MediTech app: medicines, pharmacies, your reservations, and how to use the app.";
   }
   return null;
 }
@@ -293,8 +305,8 @@ export function refuseReason(message: string): string | null {
 // Price checking was removed — it caused too many false positives when Gemini
 // reformatted or rounded numbers.
 export function hasInventedFact(reply: string, facts: AiFacts): boolean {
-  // Reference numbers: MT-MMDDYY-XXXX format
-  const references = reply.match(/MT-\d{6}-[A-Za-z0-9]{4,5}/gi) ?? [];
+  // Reference numbers: RM-MMDDYY-XXXX format
+  const references = reply.match(/RM-\d{6}-[A-Za-z0-9]{4,5}/gi) ?? [];
   if (references.some((ref) => !facts.referenceNumbers.includes(ref.toUpperCase()))) {
     return true;
   }

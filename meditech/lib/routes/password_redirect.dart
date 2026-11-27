@@ -53,6 +53,7 @@ String? redirectForPharmacySession(SignedInAccount? account, String location) {
   if (passwordRedirect != null) return passwordRedirect;
 
   if (account == null) {
+    if (location.startsWith('/forgot-password')) return null;
     if (location == '/application-status' ||
         location == '/suspended' ||
         _pharmacyShellPaths.contains(location) ||
@@ -84,6 +85,11 @@ String? redirectForPharmacySession(SignedInAccount? account, String location) {
       location == '/suspended') {
     return '/dashboard';
   }
+
+  if (location.startsWith('/employees') && account.role != 'owner') {
+    return '/dashboard';
+  }
+
   return null;
 }
 

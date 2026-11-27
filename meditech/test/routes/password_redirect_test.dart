@@ -77,6 +77,15 @@ void main() {
     expect(redirectForPharmacySession(null, '/'), null);
   });
 
+  test('only owners open Employees', () {
+    const pharmacist = SignedInAccount(
+      accountType: 'staff',
+      state: 'active',
+      role: 'pharmacist',
+    );
+    expect(redirectForPharmacySession(pharmacist, '/employees'), '/dashboard');
+  });
+
   // Approved pharmacy staff open the dashboard shell
   test('active pharmacy staff open the dashboard', () {
     const active = SignedInAccount(

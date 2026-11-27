@@ -138,18 +138,6 @@ class PharmacyUserProfileCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           PharmacyProfileInfoRow(label: 'Email', value: profile.email!),
         ],
-        if (profile.role == 'pharmacist' || profile.prcLicenseNo != null) ...[
-          const SizedBox(height: AppSpacing.sm),
-          PharmacyProfileInfoRow(
-            label: 'PRC license',
-            value: profile.prcLicenseNo ?? 'Not on file',
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          PharmacyProfileInfoRow(
-            label: 'License status',
-            value: profile.licenseStatusLabel,
-          ),
-        ],
         const SizedBox(height: AppSpacing.lg),
         OutlinedButton.icon(
           onPressed: onChangePassword,

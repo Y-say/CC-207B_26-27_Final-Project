@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../providers/session_providers.dart';
 import '../../../utils/app_failure.dart';
 import '../../../widgets/common/app_text_field.dart';
+import 'password_changed_modal.dart';
 import '../../../widgets/common/async_view.dart';
 import '../../../widgets/theme/app_spacing.dart';
 
 // Enter the emailed code and save a new password
 class ResetPasswordScreen extends ConsumerStatefulWidget {
-  const ResetPasswordScreen({super.key, this.identifier});
+  const ResetPasswordScreen({
+    super.key,
+    this.identifier,
+    this.signInPath = '/sign-in',
+    this.signedInHint = 'Sign in with your email and new password.',
+  });
 
   final String? identifier;
+  final String signInPath;
+  final String signedInHint;
 
   @override
   ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -74,7 +81,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             code: _code.text,
             newPassword: _password.text,
           );
-      if (mounted) context.go('/sign-in');
+      if (!mounted) return;
+      await showPasswordChangedModal(
+        context,
+        signInPath: widget.signInPath,
+        message: widget.signedInHint,
+      );
     } on AppFailure catch (error) {
       setState(() {
         _offline = error.message == 'Could not reach Supabase.';

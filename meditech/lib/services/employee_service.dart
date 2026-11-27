@@ -11,11 +11,13 @@ import 'staff_avatar_service.dart';
 class CreatedEmployee {
   final String accountId;
   final String displayId;
+  final String username;
   final String temporaryPassword;
 
   const CreatedEmployee({
     required this.accountId,
     required this.displayId,
+    required this.username,
     required this.temporaryPassword,
   });
 }
@@ -36,6 +38,7 @@ abstract class EmployeeService {
     String? middleName,
     required String lastName,
     required String username,
+    String? email,
     required String role,
     String? prcLicenseNo,
     DateTime? prcLicenseExpiry,
@@ -74,6 +77,11 @@ abstract class EmployeeService {
     required String firstName,
     String? middleName,
     required String lastName,
+  });
+
+  Future<void> updateContactEmail({
+    required String employeeId,
+    required String email,
   });
 }
 
@@ -128,33 +136,8 @@ class SupabaseEmployeeService implements EmployeeService {
   }
 
   Future<List<Employee>> _loadEmployeesFromTable() async {
-    final branchId = await _client.rpc('my_branch_id') as String?;
-    if (branchId == null) return [];
-
-    const core = '''
-      account_id,
-      display_id,
-      role,
-      first_name,
-      middle_name,
-      last_name,
-      prc_license_no,
-      prc_license_expiry,
-      license_status,
-      is_active
-    ''';
-
-    List<dynamic> rows;
-    try {
-      rows = await _client
-          .from('staff_members')
-          .select('$core, avatar_path')
-          .eq('branch_id', branchId);
-    } on PostgrestException catch (error) {
-      if (!error.message.toLowerCase().contains('avatar_path')) rethrow;
-      rows = await _client.from('staff_members').select(core).eq('branch_id', branchId);
-    }
-
+    final rows = await _client.rpc('list_branch_employees');
+    if (rows is! List) return [];
     return [
       for (final raw in rows)
         if (raw is Map) Employee.fromJson(Map<String, dynamic>.from(raw)),
@@ -172,6 +155,7 @@ class SupabaseEmployeeService implements EmployeeService {
     String? middleName,
     required String lastName,
     required String username,
+    String? email,
     required String role,
     String? prcLicenseNo,
     DateTime? prcLicenseExpiry,
@@ -183,6 +167,7 @@ class SupabaseEmployeeService implements EmployeeService {
         'middle_name': middleName.trim(),
       'last_name': lastName.trim(),
       'username': username.trim(),
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
       'role': role,
       if (role == 'pharmacist' && prcLicenseNo != null)
         'prc_license_no': prcLicenseNo.trim(),
@@ -193,6 +178,7 @@ class SupabaseEmployeeService implements EmployeeService {
     return CreatedEmployee(
       accountId: data['account_id'] as String,
       displayId: (data['display_id'] as String?) ?? '',
+      username: username.trim(),
       temporaryPassword: data['temporary_password'] as String,
     );
   }
@@ -283,6 +269,18 @@ class SupabaseEmployeeService implements EmployeeService {
       if (middleName != null && middleName.trim().isNotEmpty)
         'middle_name': middleName.trim(),
       'last_name': lastName.trim(),
+    });
+  }
+
+  @override
+  Future<void> updateContactEmail({
+    required String employeeId,
+    required String email,
+  }) async {
+    await _invoke({
+      'action': 'update_employee_email',
+      'employee_id': employeeId,
+      'email': email.trim(),
     });
   }
 }

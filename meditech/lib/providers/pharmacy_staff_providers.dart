@@ -5,6 +5,7 @@ import '../services/staff_avatar_local_store.dart';
 import '../services/staff_avatar_service.dart';
 import '../services/staff_profile_query.dart';
 import '../utils/app_failure.dart';
+import '../utils/staff_contact_email.dart';
 
 import 'branch_reservation_providers.dart';
 import 'session_providers.dart';
@@ -88,9 +89,14 @@ class PharmacyStaffProfile {
   String get licenseStatusLabel => switch (licenseStatus) {
         'verified' => 'Verified',
         'pending' => 'Pending verification',
+        'expired' => 'Expired',
         'rejected' => 'Rejected',
+        'none' => 'Not on file',
         _ => 'Not on file',
       };
+
+  /// Pharmacists and owner–pharmacists keep a personal PRC on file (not branch staff).
+  bool get showsPrcLicenseSection => role == 'pharmacist' || role == 'owner';
 
   /// Matches database [has_valid_license] (confirm / reject / Rx release).
   bool hasValidPharmacistLicense([DateTime? onDate]) {
@@ -104,6 +110,9 @@ class PharmacyStaffProfile {
 
   /// Owner or pharmacist may cancel (staff cannot) per [cancel_reservation].
   bool get canCancelReservation => role == 'owner' || role == 'pharmacist';
+
+  /// Real contact email from auth, excluding internal staff sign-in addresses.
+  String? get contactEmail => staffContactEmailFromAuth(email);
 }
 
 /// True when the signed-in user may confirm or reject pending reservations.

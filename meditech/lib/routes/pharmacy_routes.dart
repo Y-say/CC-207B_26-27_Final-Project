@@ -15,6 +15,10 @@ import '../screens/pharmacy/profile/pharmacy_edit_profile_screen.dart';
 import '../screens/pharmacy/profile/pharmacy_profile_screen.dart';
 import '../screens/pharmacy/reservations/reservations_screen.dart';
 import '../screens/pharmacy/sign_in/pharmacy_sign_in_screen.dart';
+import '../screens/customer/forgot_password/check_email_screen.dart';
+import '../screens/customer/forgot_password/forgot_password_route_extra.dart';
+import '../screens/customer/forgot_password/forgot_password_screen.dart';
+import '../screens/customer/forgot_password/reset_password_screen.dart';
 import '../screens/pharmacy/stock_alerts/stock_alerts_screen.dart';
 import '../screens/shared/change_password_screen.dart';
 import '../screens/shared/notification_list_screen.dart';
@@ -37,6 +41,47 @@ final pharmacyRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         builder: (context, state) => const PharmacySignInScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(
+          signInPath: '/',
+          subtitle:
+              'Enter the Gmail on your pharmacy profile, or your username if that Gmail is already saved. '
+              "We'll email a 6-digit reset code.",
+          identifierLabel: 'Gmail or username',
+          identifierHint: 'you@gmail.com',
+          noDeliveryMessage:
+              'No code was sent. Add Gmail under Profile → Edit profile while signed in, or ask your owner to set it on Employees. '
+              'Demo @demo.meditech.dev addresses cannot receive mail.',
+        ),
+        routes: [
+          GoRoute(
+            path: 'check-email',
+            builder: (context, state) {
+              final extra = forgotPasswordRouteExtra(state.extra);
+              return CheckEmailScreen(
+                identifier: extra?['identifier'],
+                deliveryEmail: extra?['deliveryEmail'],
+                signInPath: extra?['signInPath'] ?? '/',
+              );
+            },
+          ),
+          GoRoute(
+            path: 'reset',
+            builder: (context, state) {
+              final extra = forgotPasswordRouteExtra(state.extra);
+              final id = extra?['identifier'] ??
+                  (state.extra is String ? state.extra as String : null);
+              return ResetPasswordScreen(
+                identifier: id,
+                signInPath: extra?['signInPath'] ?? '/',
+                signedInHint:
+                    'Your password was updated. Sign in with your username and new password.',
+              );
+            },
+          ),
+        ],
       ),
       ShellRoute(
         builder: (context, state, child) => PharmacyShellScreen(child: child),
@@ -98,12 +143,13 @@ final pharmacyRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/suspended',
-        builder: (context, state) => LtoRenewalScreen(
-          onSignOut: () async {
-            await ref.read(sessionProvider.notifier).signOut();
-            // ignore: use_build_context_synchronously
-            if (context.mounted) context.go('/');
-          },
+        builder: (context, state) => Consumer(
+          builder: (context, ref, _) => LtoRenewalScreen(
+            onSignOut: () async {
+              await ref.read(sessionProvider.notifier).signOut();
+              if (context.mounted) context.go('/');
+            },
+          ),
         ),
       ),
       GoRoute(

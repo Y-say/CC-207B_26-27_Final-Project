@@ -35,6 +35,34 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     super.dispose();
   }
 
+  Future<bool> _confirmPasswordChange() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(
+          Icons.lock_reset_outlined,
+          color: AppColors.primary,
+          size: 40,
+        ),
+        title: const Text('Change password?'),
+        content: const Text(
+          'Are you sure you want to update your password?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
   // Save the new password only when the two new boxes match
   Future<void> _save() async {
     if (_currentPassword.text.isEmpty ||
@@ -56,6 +84,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       return;
     }
 
+    final confirmed = await _confirmPasswordChange();
+    if (!confirmed || !mounted) return;
+
     setState(() {
       _busy = true;
       _error = null;
@@ -68,8 +99,19 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             currentPassword: _currentPassword.text,
             newPassword: _newPassword.text,
           );
-          ref.read(sessionProvider.notifier).passwordWasChanged();
+      ref.read(sessionProvider.notifier).passwordWasChanged();
+      if (!mounted) return;
+      _currentPassword.clear();
+      _newPassword.clear();
+      _confirmPassword.clear();
       setState(() => _saved = true);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Your password has been changed.'),
+          ),
+        );
     } on AppFailure catch (error) {
       setState(() {
         _offline = error.message == 'Could not reach Supabase.';
@@ -167,12 +209,32 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                           ),
                           if (_saved) ...[
                             const SizedBox(height: AppSpacing.md),
-                            const Text(
-                              'Password saved.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(alpha: 0.35),
+                                ),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    color: AppColors.primary,
+                                  ),
+                                  SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: Text(
+                                      'Your password has been changed.',
+                                      style: TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

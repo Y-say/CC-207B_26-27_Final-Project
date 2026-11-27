@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meditech/models/signed_in_account.dart';
+import 'package:meditech/providers/assistant_chat_provider.dart';
 import 'package:meditech/providers/assistant_providers.dart';
 import 'package:meditech/providers/session_providers.dart';
 import 'package:meditech/screens/customer/assistant/assistant_screen.dart';
@@ -12,23 +13,33 @@ import 'package:mocktail/mocktail.dart';
 class MockAssistantService extends Mock implements AssistantService {}
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(const <Map<String, String>>[]);
+    registerFallbackValue(<String, dynamic>{});
+  });
   // The empty screen shows the greeting and suggested questions
   testWidgets('shows the empty assistant layout', (tester) async {
     final fake = MockAssistantService();
 
     await tester.pumpWidget(_app(fake));
 
-    expect(find.text('Medipal'), findsOneWidget);
-    expect(find.text('What can I help you today?'), findsOneWidget);
+    expect(find.text('Medipal'), findsWidgets);
+    expect(find.text('How can I help you today?'), findsOneWidget);
+    expect(find.text('What pharmacies are open near me right now?'), findsOneWidget);
     expect(find.text('Where can I find paracetamol 500mg?'), findsOneWidget);
-    expect(find.text('How do I place a reservation?'), findsOneWidget);
-    expect(find.text('Ask something...'), findsOneWidget);
+    expect(find.text('Ask Medipal'), findsOneWidget);
   });
 
   // A reply from the function is shown under the question
   testWidgets('shows the assistant reply', (tester) async {
     final fake = MockAssistantService();
-    when(() => fake.ask(any())).thenAnswer((_) async => 'Biogesic is listed in MediTech.');
+    when(
+      () => fake.ask(
+        any(),
+        history: any(named: 'history'),
+        location: any(named: 'location'),
+      ),
+    ).thenAnswer((_) async => 'Biogesic is listed in MediTech.');
 
     await tester.pumpWidget(_app(fake));
     await tester.enterText(find.byType(TextField), 'where can I find paracetamol');
@@ -43,7 +54,13 @@ void main() {
   // An unavailable assistant shows that message instead of a blank page
   testWidgets('shows the unavailable message', (tester) async {
     final fake = MockAssistantService();
-    when(() => fake.ask(any())).thenThrow(const AppFailure('The assistant is unavailable.'));
+    when(
+      () => fake.ask(
+        any(),
+        history: any(named: 'history'),
+        location: any(named: 'location'),
+      ),
+    ).thenThrow(const AppFailure('The assistant is unavailable.'));
 
     await tester.pumpWidget(_app(fake));
     await tester.enterText(find.byType(TextField), 'where can I find paracetamol');
@@ -62,6 +79,7 @@ void main() {
       ProviderScope(
         overrides: [
           assistantServiceProvider.overrideWithValue(fake),
+          assistantChatProvider.overrideWith(AssistantChatNotifier.new),
           sessionProvider.overrideWith(_Guest.new),
         ],
         child: const MaterialApp(home: AssistantScreen()),
@@ -73,7 +91,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sign in'), findsWidgets);
-    verifyNever(() => fake.ask(any()));
+    verifyNever(
+      () => fake.ask(
+        any(),
+        history: any(named: 'history'),
+        location: any(named: 'location'),
+      ),
+    );
   });
 }
 
@@ -86,6 +110,7 @@ Widget _app(AssistantService fake) {
   return ProviderScope(
     overrides: [
       assistantServiceProvider.overrideWithValue(fake),
+      assistantChatProvider.overrideWith(AssistantChatNotifier.new),
       sessionProvider.overrideWith(_SignedIn.new),
     ],
     child: const MaterialApp(home: AssistantScreen()),

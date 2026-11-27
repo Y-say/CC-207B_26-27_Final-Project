@@ -132,6 +132,53 @@ Deno.serve(async (req) => {
     return reply(200, { ok: true });
   }
 
+  // ---- Contact email for the signed-in owner or employee ------------
+  if (action === "update_my_email") {
+    if (account.account_type !== "staff") {
+      return reply(403, { error: "Only pharmacy staff can update email." });
+    }
+    const rawEmail = String(body.email ?? "").trim();
+    const errors: Record<string, string> = {};
+    if (!emailRule.test(rawEmail)) errors.email = "Enter a valid email.";
+    if (Object.keys(errors).length) {
+      return reply(400, { error: "Check the highlighted fields.", fields: errors });
+    }
+
+    const { data: staff } = await db
+      .from("staff_members")
+      .select("display_id, branch_id, role, first_name, last_name, is_active")
+      .eq("account_id", callerId)
+      .maybeSingle();
+    if (!staff?.is_active) {
+      return reply(403, { error: "Your account is not active." });
+    }
+
+    const { error: emailError } = await db.auth.admin.updateUserById(callerId, {
+      email: rawEmail,
+      email_confirm: true,
+    });
+    if (emailError) {
+      return reply(409, {
+        error: "This email is already registered.",
+        fields: { email: "Already registered." },
+      });
+    }
+
+    const label = `${staff.first_name} ${staff.last_name} (${staff.role})`;
+    await db.rpc("log_activity", {
+      p_branch_id: staff.branch_id,
+      p_actor_id: callerId,
+      p_actor_label: label,
+      p_actor_role: staff.role,
+      p_action: "Updated contact email",
+      p_entity_type: "employee",
+      p_entity_id: staff.display_id,
+      p_details: {},
+    }).catch(() => {});
+
+    return reply(200, { ok: true });
+  }
+
   // ---------------------------------------------------------------
   // Everything else is for a branch owner
   // ---------------------------------------------------------------
@@ -366,6 +413,30 @@ Deno.serve(async (req) => {
     if (error) return reply(500, { error: "Could not save the profile." });
 
     await logActivity("Updated an employee profile", employee.display_id);
+    return reply(200, { ok: true });
+  }
+
+  // ---- Contact email for password reset (owner sets for employees) -----
+  if (action === "update_employee_email") {
+    const rawEmail = String(body.email ?? "").trim();
+    const errors: Record<string, string> = {};
+    if (!emailRule.test(rawEmail)) errors.email = "Enter a valid email.";
+    if (Object.keys(errors).length) {
+      return reply(400, { error: "Check the highlighted fields.", fields: errors });
+    }
+
+    const { error: emailError } = await db.auth.admin.updateUserById(employee.account_id, {
+      email: rawEmail,
+      email_confirm: true,
+    });
+    if (emailError) {
+      return reply(409, {
+        error: "This email is already registered.",
+        fields: { email: "Already registered." },
+      });
+    }
+
+    await logActivity("Set employee contact email", employee.display_id);
     return reply(200, { ok: true });
   }
 

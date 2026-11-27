@@ -40,8 +40,7 @@ FriendlyError resolveFriendlyError(Object error, {String? action}) {
           'This reservation includes prescription (Rx) medicines. Only a pharmacist '
           'with a verified, unexpired PRC license can release them at pickup.',
       nextStep:
-          'Sign in as a verified pharmacist, or ask your branch owner to verify '
-          'a pharmacist\'s license under Employees.',
+          'Ask your branch owner to verify a pharmacist license under Employees.',
     );
   }
 
@@ -53,8 +52,7 @@ FriendlyError resolveFriendlyError(Object error, {String? action}) {
           'verified, unexpired PRC license. General branch staff—and owners without '
           'a verified license—cannot approve or reject requests.',
       nextStep:
-          'Ask your branch owner to verify a pharmacist in Employees, or sign in as '
-          'that pharmacist (for example your demo pharmacist account).',
+          'Ask your branch owner to verify a pharmacist in Employees.',
     );
   }
 
