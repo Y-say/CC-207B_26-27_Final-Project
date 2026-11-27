@@ -47,13 +47,24 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     });
 
     try {
-      await ref.read(authServiceProvider).sendPasswordReset(identifier: identifier);
-      if (mounted) {
-        context.push(
-          '/forgot-password/check-email',
-          extra: identifier,
-        );
+      final deliveryEmail = await ref
+          .read(authServiceProvider)
+          .sendPasswordReset(identifier: identifier);
+      if (!mounted) return;
+      if (deliveryEmail == null) {
+        setState(() {
+          _error =
+              'No reset code was sent. Sign up in the customer app with your Gmail first, then use that exact email here. Demo @demo.meditech.dev addresses cannot receive mail. On a phone, run the app with env/prod.json (hosted Supabase), not env/dev.json.';
+        });
+        return;
       }
+      context.push(
+        '/forgot-password/check-email',
+        extra: {
+          'identifier': identifier,
+          'deliveryEmail': deliveryEmail,
+        },
+      );
     } on AppFailure catch (error) {
       setState(() {
         _offline = error.message == 'Could not reach Supabase.';

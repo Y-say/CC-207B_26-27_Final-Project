@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reset password</title>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", sans-serif; background: #f3f5f2; color: #1a2e22; }
+    main { max-width: 420px; margin: 48px auto; padding: 28px; background: #fff; border: 1px solid #dde3de; border-radius: 16px; }
+    h1 { margin: 0 0 8px; font-size: 24px; color: #2e6b46; }
+    p { color: #5f6b65; line-height: 1.5; }
+    label { display: block; margin-top: 16px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; margin-top: 6px; padding: 12px; border: 1px solid #dde3de; border-radius: 10px; font-size: 16px; }
+    button { width: 100%; margin-top: 20px; padding: 12px; border: 0; border-radius: 10px; background: #2e6b46; color: #fff; font-size: 16px; font-weight: 700; }
+    button:disabled { opacity: 0.6; }
+    #error { min-height: 1.2em; color: #a62b2b; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Reset password</h1>
+    <p id="message">Choose a new password for your MediTech account.</p>
+    <form id="form">
+      <label>New password
+        <input id="password" type="password" autocomplete="new-password" required>
+      </label>
+      <label>Confirm password
+        <input id="confirm" type="password" autocomplete="new-password" required>
+      </label>
+      <p id="error" role="alert"></p>
+      <button id="save" type="submit">Save password</button>
+    </form>
+  </main>
+  <script>
+    var supabaseUrl = "https://nugyritgngudgbljjiwk.supabase.co";
+    var hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+    var query = new URLSearchParams(location.search);
+    var form = document.getElementById("form");
+    var message = document.getElementById("message");
+    var errorBox = document.getElementById("error");
+    var accessToken = hash.get("access_token");
+    var apikey = query.get("apikey");
+    var type = hash.get("type");
+    var linkError = hash.get("error_description") || hash.get("error");
+
+    function showError(text) {
+      errorBox.textContent = text;
+    }
+
+    if (!apikey) {
+      form.hidden = true;
+      message.textContent = "This reset page is not set up. Request a new reset email from the app.";
+    } else if (linkError) {
+      form.hidden = true;
+      message.textContent = "This reset link is invalid or expired. Request a new one from the app.";
+    } else if (type === "signup" || type === "email_change") {
+      form.hidden = true;
+      message.textContent = "Email confirmed. Go back to MediTech and sign in.";
+    } else if (!accessToken || (type && type !== "recovery")) {
+      form.hidden = true;
+      message.textContent = "Open the reset link from your latest email to choose a new password.";
+    }
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var password = document.getElementById("password").value;
+      var confirm = document.getElementById("confirm").value;
+      if (password !== confirm) {
+        showError("Passwords do not match.");
+        return;
+      }
+      if (!/^(?=.*[A-Za-z])(?=.*[0-9]).{8,}$/.test(password)) {
+        showError("Use 8+ characters with a letter and a number.");
+        return;
+      }
+      var button = document.getElementById("save");
+      button.disabled = true;
+      showError("");
+      fetch(supabaseUrl + "/auth/v1/user", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: apikey,
+          Authorization: "Bearer " + accessToken
+        },
+        body: JSON.stringify({ password: password })
+      }).then(function (response) {
+        return response.json().then(function (body) {
+          return { ok: response.ok, body: body };
+        });
+      }).then(function (result) {
+        if (!result.ok) {
+          showError((result.body && (result.body.msg || result.body.message || result.body.error_description)) || "Could not save the password.");
+          button.disabled = false;
+          return;
+        }
+        form.hidden = true;
+        message.textContent = "Password saved. Go back to MediTech and sign in.";
+        history.replaceState(null, "", location.pathname + location.search);
+      }).catch(function () {
+        showError("Could not reach MediTech. Try again.");
+        button.disabled = false;
+      });
+    });
+  </script>
+</body>
+</html>

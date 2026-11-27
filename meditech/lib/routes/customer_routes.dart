@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../screens/customer/assistant/assistant_screen.dart';
 import '../screens/customer/cart/cart_screen.dart';
 import '../screens/customer/customer_frame.dart';
+import '../screens/customer/forgot_password/forgot_password_route_extra.dart';
 import '../screens/customer/forgot_password/check_email_screen.dart';
 import '../screens/customer/forgot_password/forgot_password_screen.dart';
+import '../screens/customer/forgot_password/finish_recovery_password_screen.dart';
 import '../screens/customer/forgot_password/reset_password_screen.dart';
 import '../screens/customer/landing/landing_screen.dart';
 import '../screens/customer/login/login_screen.dart';
@@ -80,15 +82,28 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: 'check-email',
-            builder: (context, state) => CheckEmailScreen(
-              identifier: state.extra is String ? state.extra as String : null,
-            ),
+            builder: (context, state) {
+              final extra = forgotPasswordRouteExtra(state.extra);
+              return CheckEmailScreen(
+                identifier: extra?['identifier'],
+                deliveryEmail: extra?['deliveryEmail'],
+              );
+            },
           ),
           GoRoute(
             path: 'reset',
-            builder: (context, state) => ResetPasswordScreen(
-              identifier: state.extra is String ? state.extra as String : null,
-            ),
+            builder: (context, state) {
+              final extra = forgotPasswordRouteExtra(state.extra);
+              return ResetPasswordScreen(
+                identifier: extra?['identifier'] ??
+                    (state.extra is String ? state.extra as String : null),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'complete',
+            parentNavigatorKey: customerRootNavigatorKey,
+            builder: (context, state) => const FinishRecoveryPasswordScreen(),
           ),
         ],
       ),

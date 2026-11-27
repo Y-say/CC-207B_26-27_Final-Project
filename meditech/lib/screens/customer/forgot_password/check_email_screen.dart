@@ -6,9 +6,10 @@ import '../../../widgets/theme/app_spacing.dart';
 
 // Shown after reset instructions are sent
 class CheckEmailScreen extends StatelessWidget {
-  const CheckEmailScreen({super.key, this.identifier});
+  const CheckEmailScreen({super.key, this.identifier, this.deliveryEmail});
 
   final String? identifier;
+  final String? deliveryEmail;
 
   @override
   Widget build(BuildContext context) {
@@ -31,23 +32,25 @@ class CheckEmailScreen extends StatelessWidget {
                     ),
               ),
               const SizedBox(height: AppSpacing.md),
-              const Text(
-                "We've sent reset instructions to your email. The link expires in 30 minutes.",
+              Text(
+                deliveryEmail != null
+                    ? 'We sent a 6-digit code to $deliveryEmail. Open the message titled Your MediTech password reset code (check Spam). Do not tap any Supabase reset link—it often opens a blank browser tab on Android. Tap Enter the code below instead. The code expires in 1 hour.'
+                    : "If that email is registered as a MediTech customer account, we sent a 6-digit code there. Use the same email you signed up with. Check spam and tap Enter the code—do not use a Supabase reset link.",
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textMuted, fontSize: 15),
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
               ),
               const Spacer(),
               FilledButton(
-                onPressed: () => context.go('/sign-in'),
-                child: const Text('Back to login'),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              TextButton(
                 onPressed: () => context.push(
                   '/forgot-password/reset',
                   extra: identifier,
                 ),
-                child: const Text('Enter the code from your email'),
+                child: const Text('Enter the code'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextButton(
+                onPressed: () => context.go('/sign-in'),
+                child: const Text('Back to login'),
               ),
             ],
           ),

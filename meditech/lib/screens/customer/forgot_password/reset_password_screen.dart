@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../providers/session_providers.dart';
 import '../../../utils/app_failure.dart';
 import '../../../widgets/common/app_text_field.dart';
+import 'password_changed_modal.dart';
 import '../../../widgets/common/async_view.dart';
 import '../../../widgets/theme/app_spacing.dart';
 
@@ -74,7 +75,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             code: _code.text,
             newPassword: _password.text,
           );
-      if (mounted) context.go('/sign-in');
+      if (!mounted) return;
+      await showPasswordChangedModal(context);
     } on AppFailure catch (error) {
       setState(() {
         _offline = error.message == 'Could not reach Supabase.';

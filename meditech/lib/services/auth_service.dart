@@ -29,13 +29,16 @@ abstract class AuthService {
     required String newPassword,
   });
 
-  Future<void> sendPasswordReset({required String identifier});
+  /// Returns a masked inbox address when a code was emailed.
+  Future<String?> sendPasswordReset({required String identifier});
 
   Future<void> resetPassword({
     required String identifier,
     required String code,
     required String newPassword,
   });
+
+  Future<void> finishPasswordRecovery({required String newPassword});
 
   Future<void> signOut();
 
@@ -174,12 +177,18 @@ class SupabaseAuthService implements AuthService {
 
   // Ask for a reset code. The same reply is used when no account exists.
   @override
-  Future<void> sendPasswordReset({required String identifier}) async {
+  Future<String?> sendPasswordReset({required String identifier}) async {
     try {
-      await _client.functions.invoke(
+      final response = await _client.functions.invoke(
         'forgot-password',
         body: {'action': 'send', 'identifier': identifier.trim()},
       );
+      final data = response.data;
+      if (data is Map) {
+        final masked = data['deliveryEmail'];
+        if (masked is String && masked.isNotEmpty) return masked;
+      }
+      return null;
     } on FunctionException catch (error) {
       throw AppFailure.fromEdge(error);
     }
@@ -202,8 +211,19 @@ class SupabaseAuthService implements AuthService {
           'password': newPassword,
         },
       );
+      await _client.auth.signOut();
     } on FunctionException catch (error) {
       throw AppFailure.fromEdge(error);
+    }
+  }
+
+  @override
+  Future<void> finishPasswordRecovery({required String newPassword}) async {
+    try {
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+      await _client.auth.signOut();
+    } on AuthException catch (error) {
+      throw AppFailure(error.message);
     }
   }
 
