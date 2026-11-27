@@ -33,6 +33,8 @@ class _OsmListingsScreenState extends ConsumerState<OsmListingsScreen> {
   String _statusFilter = 'all';
   bool _syncing = false;
   String? _busyId;
+  int _page = 0;
+  int _perPage = 25;
 
   @override
   void dispose() {
@@ -55,6 +57,9 @@ class _OsmListingsScreenState extends ConsumerState<OsmListingsScreen> {
     ),
   };
 
+  int _countByStatus(List<OsmListing> all, OsmListingStatus status) =>
+      all.where((item) => item.status == status).length;
+
   List<OsmListing> _filtered(List<OsmListing> all) {
     final q = _search.text.trim().toLowerCase();
     return all.where((item) {
@@ -70,6 +75,26 @@ class _OsmListingsScreenState extends ConsumerState<OsmListingsScreen> {
           item.address.toLowerCase().contains(q) ||
           item.osmId.toLowerCase().contains(q);
     }).toList();
+  }
+
+  void _resetPage() => _page = 0;
+
+  ({int page, int pageCount, List<OsmListing> slice, int firstShown, int lastShown})
+  _pagedSlice(List<OsmListing> filtered) {
+    if (filtered.isEmpty) {
+      return (page: 0, pageCount: 0, slice: const [], firstShown: 0, lastShown: 0);
+    }
+    final pageCount = (filtered.length / _perPage).ceil();
+    final page = _page.clamp(0, pageCount - 1);
+    final start = page * _perPage;
+    final end = (start + _perPage).clamp(0, filtered.length);
+    return (
+      page: page,
+      pageCount: pageCount,
+      slice: filtered.sublist(start, end),
+      firstShown: start + 1,
+      lastShown: end,
+    );
   }
 
   Future<void> _onSync() async {
@@ -155,6 +180,7 @@ class _OsmListingsScreenState extends ConsumerState<OsmListingsScreen> {
       onRetry: () => ref.invalidate(adminOsmListingsProvider),
       builder: (listings) {
         final filtered = _filtered(listings);
+        final paged = _pagedSlice(filtered);
 
         return Padding(
           padding: widget.embedded ? EdgeInsets.zero : const EdgeInsets.all(AppSpacing.lg),
@@ -211,7 +237,7 @@ class _OsmListingsScreenState extends ConsumerState<OsmListingsScreen> {
                       height: TabletControls.toolbarHeight,
                       child: TextField(
                         controller: _search,
-                        onChanged: (_) => setState(() {}),
+                        onChanged: (_) => setState(_resetPage),
                         decoration: TabletControls.searchDecoration(
                           hint: 'Name, address, or OSM ID',
                           suffixIcon: _search.text.isEmpty
@@ -219,7 +245,10 @@ class _OsmListingsScreenState extends ConsumerState<OsmListingsScreen> {
                               : IconButton(
                                   tooltip: 'Clear search',
                                   icon: const Icon(Icons.close, size: 18),
-                                  onPressed: () => setState(() => _search.clear()),
+                                  onPressed: () => setState(() {
+                                    _search.clear();
+                                    _resetPage();
+                                  }),
                                 ),
                         ),
                       ),
@@ -251,25 +280,35 @@ class _OsmListingsScreenState extends ConsumerState<OsmListingsScreen> {
                     AppChip(
                       label: 'All (${listings.length})',
                       selected: _statusFilter == 'all',
-                      onSelected: (_) => setState(() => _statusFilter = 'all'),
+                      onSelected: (_) => setState(() {
+                        _statusFilter = 'all';
+                        _resetPage();
+                      }),
                     ),
                     AppChip(
-                      label: 'Shown',
+                      label: 'Shown (${_countByStatus(listings, OsmListingStatus.shown)})',
                       selected: _statusFilter == 'shown',
-                      onSelected: (_) =>
-                          setState(() => _statusFilter = 'shown'),
+                      onSelected: (_) => setState(() {
+                        _statusFilter = 'shown';
+                        _resetPage();
+                      }),
                     ),
                     AppChip(
-                      label: 'Replaced',
+                      label:
+                          'Replaced (${_countByStatus(listings, OsmListingStatus.replaced)})',
                       selected: _statusFilter == 'replaced',
-                      onSelected: (_) =>
-                          setState(() => _statusFilter = 'replaced'),
+                      onSelected: (_) => setState(() {
+                        _statusFilter = 'replaced';
+                        _resetPage();
+                      }),
                     ),
                     AppChip(
-                      label: 'Hidden',
+                      label: 'Hidden (${_countByStatus(listings, OsmListingStatus.hidden)})',
                       selected: _statusFilter == 'hidden',
-                      onSelected: (_) =>
-                          setState(() => _statusFilter = 'hidden'),
+                      onSelected: (_) => setState(() {
+                        _statusFilter = 'hidden';
+                        _resetPage();
+                      }),
                     ),
                   ],
                 ),
@@ -284,24 +323,38 @@ class _OsmListingsScreenState extends ConsumerState<OsmListingsScreen> {
                         const _OsmTableHeader(),
                         Expanded(
                           child: filtered.isEmpty
-                              ? const Center(
-                                  child: Text(
-                                    'No OpenStreetMap listings match the current filter.',
-                                    style: TextStyle(color: AppColors.textMuted),
-                                  ),
+                              ? StateMessage(
+                                  icon: Icons.map_outlined,
+                                  message: _search.text.trim().isEmpty
+                                      ? 'No OpenStreetMap listings match the current filter.'
+                                      : 'No listings match your search. Try another name, address, or OSM ID.',
                                 )
                               : ListView.separated(
-                                  itemCount: filtered.length,
+                                  itemCount: paged.slice.length,
                                   separatorBuilder: (_, _) => const Divider(height: 1),
                                   itemBuilder: (context, index) => _OsmListingRow(
-                                    listing: filtered[index],
-                                    statusBadge: _statusBadge(filtered[index]),
-                                    busy: _busyId == filtered[index].id,
-                                    onHide: () => _onHide(filtered[index]),
-                                    onShowAgain: () => _onShowAgain(filtered[index]),
+                                    listing: paged.slice[index],
+                                    statusBadge: _statusBadge(paged.slice[index]),
+                                    busy: _busyId == paged.slice[index].id,
+                                    onHide: () => _onHide(paged.slice[index]),
+                                    onShowAgain: () => _onShowAgain(paged.slice[index]),
                                   ),
                                 ),
                         ),
+                        if (filtered.isNotEmpty)
+                          _OsmListingsPaginationBar(
+                            firstShown: paged.firstShown,
+                            lastShown: paged.lastShown,
+                            total: filtered.length,
+                            perPage: _perPage,
+                            page: paged.page,
+                            pageCount: paged.pageCount,
+                            onPerPage: (value) => setState(() {
+                              _perPage = value;
+                              _resetPage();
+                            }),
+                            onPage: (page) => setState(() => _page = page),
+                          ),
                       ],
                     ),
                   ),
@@ -315,6 +368,140 @@ class _OsmListingsScreenState extends ConsumerState<OsmListingsScreen> {
     if (widget.embedded) return body;
 
     return Scaffold(backgroundColor: AppColors.background, body: body);
+  }
+}
+
+class _OsmListingsPaginationBar extends StatelessWidget {
+  const _OsmListingsPaginationBar({
+    required this.firstShown,
+    required this.lastShown,
+    required this.total,
+    required this.perPage,
+    required this.page,
+    required this.pageCount,
+    required this.onPerPage,
+    required this.onPage,
+  });
+
+  final int firstShown;
+  final int lastShown;
+  final int total;
+  final int perPage;
+  final int page;
+  final int pageCount;
+  final ValueChanged<int> onPerPage;
+  final ValueChanged<int> onPage;
+
+  @override
+  Widget build(BuildContext context) {
+    const muted = TextStyle(color: AppColors.textMuted, fontSize: 13);
+
+    return Material(
+      color: AppColors.surface,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.sm,
+          children: [
+            Text(
+              'Showing $firstShown–$lastShown of $total '
+              '${total == 1 ? 'listing' : 'listings'}',
+              style: muted,
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Rows per page: ', style: muted),
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: perPage,
+                    isDense: true,
+                    items: const [
+                      DropdownMenuItem(value: 10, child: Text('10')),
+                      DropdownMenuItem(value: 25, child: Text('25')),
+                      DropdownMenuItem(value: 50, child: Text('50')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) onPerPage(value);
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _OsmListingsPager(
+                  page: page,
+                  pageCount: pageCount,
+                  onPage: onPage,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OsmListingsPager extends StatelessWidget {
+  const _OsmListingsPager({
+    required this.page,
+    required this.pageCount,
+    required this.onPage,
+  });
+
+  final int page;
+  final int pageCount;
+  final ValueChanged<int> onPage;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = page == 0;
+    final last = page >= pageCount - 1;
+
+    Widget navButton({
+      required IconData icon,
+      required String tooltip,
+      VoidCallback? onTap,
+      bool enabled = true,
+    }) {
+      return IconButton(
+        tooltip: tooltip,
+        onPressed: enabled ? onTap : null,
+        visualDensity: VisualDensity.compact,
+        icon: Icon(icon, size: 22),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        navButton(
+          icon: Icons.chevron_left,
+          tooltip: 'Previous page',
+          enabled: !first,
+          onTap: () => onPage(page - 1),
+        ),
+        Text(
+          'Page ${page + 1} of $pageCount',
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: AppColors.text,
+          ),
+        ),
+        navButton(
+          icon: Icons.chevron_right,
+          tooltip: 'Next page',
+          enabled: !last,
+          onTap: () => onPage(page + 1),
+        ),
+      ],
+    );
   }
 }
 
@@ -363,18 +550,39 @@ class _OsmListingRow extends StatelessWidget {
         children: [
           Expanded(
             flex: 4,
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  listing.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                  overflow: TextOverflow.ellipsis,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.map_outlined,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
                 ),
-                Text(
-                  listing.osmId,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        listing.name,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        listing.osmId,
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

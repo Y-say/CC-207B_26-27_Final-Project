@@ -1,5 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+import { pickImageUrlFromOsmTags } from "./image_url.ts";
+
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -30,7 +32,7 @@ const QUERY_META = `
   node["amenity"="pharmacy"]["name"](${BBOX});
   way["amenity"="pharmacy"]["name"](${BBOX});
 );
-out center meta qt;
+out center tags meta qt;
 `;
 
 const QUERY_TAGS = `
@@ -189,16 +191,23 @@ Deno.serve(async (req) => {
 
     const { data: existingRows, error: fetchError } = await supabase
       .from("osm_listings")
-      .select("osm_id, status, last_edited_there");
+      .select("osm_id, status, last_edited_there, image_url");
 
     if (fetchError) {
       return reply(500, { error: fetchError.message });
     }
 
-    const existingMap = new Map<string, { status: string; lastEdited: string | null }>(
+    const existingMap = new Map<
+      string,
+      { status: string; lastEdited: string | null; imageUrl: string | null }
+    >(
       (existingRows ?? []).map((row) => [
         row.osm_id,
-        { status: row.status, lastEdited: row.last_edited_there ?? null },
+        {
+          status: row.status,
+          lastEdited: row.last_edited_there ?? null,
+          imageUrl: row.image_url ?? null,
+        },
       ]),
     );
 
@@ -222,6 +231,8 @@ Deno.serve(async (req) => {
         latitude: Number(lat.toFixed(6)),
         longitude: Number(lon.toFixed(6)),
         last_edited_there: freshEdited ?? existing?.lastEdited ?? null,
+        image_url:
+          pickImageUrlFromOsmTags(el.tags ?? {}) ?? existing?.imageUrl ?? null,
         status: existing?.status ?? "shown",
         synced_at: now,
       });

@@ -97,6 +97,8 @@ class NearbyOsmListingsCard extends ConsumerWidget {
                             size: 20,
                           ),
                           const SizedBox(width: AppSpacing.sm),
+                          _NearbyListingThumb(imageUrl: item.imageUrl),
+                          const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,10 +109,9 @@ class NearbyOsmListingsCard extends ConsumerWidget {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
+                                const SizedBox(height: 2),
                                 Text(
-                                  item.distanceMeters != null
-                                      ? '${item.address} · ${item.distanceMeters} m away'
-                                      : item.address,
+                                  item.address,
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textMuted,
@@ -119,6 +120,26 @@ class NearbyOsmListingsCard extends ConsumerWidget {
                               ],
                             ),
                           ),
+                          if (item.distanceMeters != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.xs,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Text(
+                                '${item.distanceMeters} m',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -137,6 +158,46 @@ class NearbyOsmListingsCard extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _NearbyListingThumb extends StatelessWidget {
+  const _NearbyListingThumb({this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl?.trim();
+    if (url != null && url.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          url,
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _fallback(),
+        ),
+      );
+    }
+    return _fallback();
+  }
+
+  Widget _fallback() {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(
+        Icons.map_outlined,
+        size: 18,
+        color: AppColors.primary,
+      ),
     );
   }
 }

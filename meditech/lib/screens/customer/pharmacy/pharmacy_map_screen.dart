@@ -10,8 +10,10 @@ import '../../../providers/osm_listing_providers.dart';
 import '../../../providers/pharmacy_providers.dart';
 import '../../../widgets/common/async_view.dart';
 import '../../../widgets/common/browse_store_card.dart';
+import '../../../widgets/common/customer_osm_listings_section.dart';
 import '../../../widgets/theme/app_colors.dart';
 import '../../../widgets/theme/app_spacing.dart';
+import 'osm_directions_navigation.dart';
 import 'osm_listing_details_screen.dart';
 import 'pharmacy_details_screen.dart';
 
@@ -96,8 +98,8 @@ class _PharmacyMapScreenState extends ConsumerState<PharmacyMapScreen> {
   Widget build(BuildContext context) {
     final branchesAsync = ref.watch(publicBranchesProvider);
     final hours = ref.watch(publicBranchHoursProvider).value;
-    final osmListings =
-        ref.watch(shownOsmListingsProvider).value ?? const <OsmListing>[];
+    final osmAsync = ref.watch(shownOsmListingsProvider);
+    final osmListings = osmAsync.value ?? const <OsmListing>[];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -301,10 +303,29 @@ class _PharmacyMapScreenState extends ConsumerState<PharmacyMapScreen> {
                               addressLine: _selectedOsm!.address.isNotEmpty
                                   ? _selectedOsm!.address
                                   : 'Location from OpenStreetMap',
+                              osmImageUrl: _selectedOsm!.imageUrl,
+                              osmLatitude: _selectedOsm!.latitude,
+                              osmLongitude: _selectedOsm!.longitude,
                               isRegistered: false,
+                              onGetDirections: () => pushOsmListingDirections(
+                                context,
+                                _selectedOsm!,
+                              ),
                               onTap: () => _openOsmDetails(_selectedOsm!),
                             ),
                             const SizedBox(height: AppSpacing.sm),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: () => pushOsmListingDirections(
+                                  context,
+                                  _selectedOsm!,
+                                ),
+                                icon: const Icon(Icons.near_me_outlined, size: 18),
+                                label: const Text('Get directions'),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
                             TextButton(
                               onPressed: _clearSelection,
                               child: const Text('Show all stores'),
@@ -344,27 +365,11 @@ class _PharmacyMapScreenState extends ConsumerState<PharmacyMapScreen> {
                             ],
                             if (osmListings.isNotEmpty) ...[
                               const SizedBox(height: AppSpacing.lg),
-                              const Text(
-                                'More pharmacies nearby',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textMuted,
-                                ),
+                              CustomerOsmListingsSection(
+                                listings: osmListings,
+                                compactTitle: true,
+                                includeDistanceInAddress: false,
                               ),
-                              const SizedBox(height: AppSpacing.sm),
-                              for (var i = 0; i < osmListings.length; i++) ...[
-                                if (i > 0)
-                                  const SizedBox(height: AppSpacing.sm),
-                                BrowseStoreCard(
-                                  name: osmListings[i].name,
-                                  addressLine: osmListings[i].address.isNotEmpty
-                                      ? osmListings[i].address
-                                      : 'Location from OpenStreetMap',
-                                  isRegistered: false,
-                                  onTap: () => _openOsmDetails(osmListings[i]),
-                                ),
-                              ],
                             ],
                           ],
                         ],

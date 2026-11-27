@@ -16,6 +16,7 @@ import '../../../widgets/common/medicine_card.dart';
 import '../../../widgets/common/pharmacy_storefront_hero.dart';
 import '../../../widgets/theme/app_colors.dart';
 import '../../../widgets/theme/app_spacing.dart';
+import 'customer_directions_navigation.dart';
 import 'directions_screen.dart';
 
 // Customer pharmacy branch details screen matching wireframe P-12
@@ -68,24 +69,13 @@ class _PharmacyDetailsScreenState extends ConsumerState<PharmacyDetailsScreen> {
   }
 
   void _openDirections(PharmacyDetail pharmacy) {
-    final args = DirectionsArgs(
-      pharmacyName: pharmacy.pharmacyName,
-      branchName: pharmacy.branchName,
-      address: pharmacy.address,
-      destination: LatLng(pharmacy.latitude, pharmacy.longitude),
-    );
-    if (GoRouter.maybeOf(context) != null) {
-      context.push('/directions', extra: args);
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => DirectionsScreen(
-          pharmacyName: pharmacy.pharmacyName,
-          branchName: pharmacy.branchName,
-          address: pharmacy.address,
-          destination: LatLng(pharmacy.latitude, pharmacy.longitude),
-        ),
+    pushCustomerDirections(
+      context,
+      DirectionsArgs(
+        pharmacyName: pharmacy.pharmacyName,
+        branchName: pharmacy.branchName,
+        address: pharmacy.address,
+        destination: LatLng(pharmacy.latitude, pharmacy.longitude),
       ),
     );
   }
