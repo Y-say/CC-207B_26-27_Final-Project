@@ -9,8 +9,10 @@ Future<bool> showConfirmDialog(
   BuildContext context, {
   required String title,
   String? subject,
-  required List<String> whatWillHappen,
+  String? message,
+  List<String> whatWillHappen = const [],
   required String actionLabel,
+  String cancelLabel = 'Go back',
   bool destructive = false,
 }) async {
   final confirmed = await showDialog<bool>(
@@ -43,17 +45,22 @@ Future<bool> showConfirmDialog(
                 const SizedBox(height: AppSpacing.md),
                 Text(subject, style: const TextStyle(fontWeight: FontWeight.w600)),
               ],
-              // The list of what will happen
-              const SizedBox(height: AppSpacing.md),
-              const Text('WHAT WILL HAPPEN',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                      color: AppColors.textMuted, letterSpacing: 0.5)),
-              const SizedBox(height: AppSpacing.sm),
-              for (final point in whatWillHappen)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  child: Text('•  $point'),
-                ),
+              if (message != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Text(message),
+              ],
+              if (whatWillHappen.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                const Text('WHAT WILL HAPPEN',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                        color: AppColors.textMuted, letterSpacing: 0.5)),
+                const SizedBox(height: AppSpacing.sm),
+                for (final point in whatWillHappen)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: Text('•  $point'),
+                  ),
+              ],
               // Go back and the action button
               const SizedBox(height: AppSpacing.lg),
               Row(children: [
@@ -63,7 +70,7 @@ Future<bool> showConfirmDialog(
                     style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.text,
                         side: const BorderSide(color: AppColors.border)),
-                    child: const Text('Go back'),
+                    child: Text(cancelLabel),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),

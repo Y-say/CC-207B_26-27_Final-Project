@@ -53,22 +53,14 @@ class _BranchStatusPanelState extends ConsumerState<BranchStatusPanel> {
     }
   }
 
-  // Explain what happens, then ask for the reason
+  // Confirm deactivation, then ask for the reason
   Future<void> _deactivate() async {
     final ok = await showConfirmDialog(
       context,
-      title: 'Deactivate ${d.pharmacyName}?',
-      subject: '${d.branchName} · ${d.displayId}',
-      whatWillHappen: const [
-        'The pharmacy is hidden from customers right away.',
-        'Pending reservations are rejected; confirmed and ready ones are cancelled, '
-            'and held stock is released.',
-        'Customers with open reservations are notified with your reason.',
-        'Carts with items from this pharmacy are emptied.',
-        'Staff can no longer sign in; the owner can only send a renewed LTO.',
-        'You can activate it again later.',
-      ],
-      actionLabel: 'Continue',
+      title: 'Deactivate pharmacy?',
+      message: 'Are you sure you want to deactivate this pharmacy?',
+      actionLabel: 'Deactivate',
+      cancelLabel: 'Cancel',
       destructive: true,
     );
     if (!ok || !mounted) return;
@@ -89,14 +81,10 @@ class _BranchStatusPanelState extends ConsumerState<BranchStatusPanel> {
   Future<void> _activate() async {
     final ok = await showConfirmDialog(
       context,
-      title: 'Activate ${d.pharmacyName}?',
-      subject: '${d.branchName} · ${d.displayId}',
-      whatWillHappen: const [
-        'Customers can find the pharmacy again.',
-        'Its in-stock medicines show up in search again.',
-        'The owner and staff can sign in and take reservations again.',
-      ],
-      actionLabel: 'Activate pharmacy',
+      title: 'Activate pharmacy?',
+      message: 'Are you sure you want to activate this pharmacy?',
+      actionLabel: 'Activate',
+      cancelLabel: 'Cancel',
     );
     if (ok) {
       await _run(() => ref.read(adminPharmacyServiceProvider).activate(d.id), 'Pharmacy activated.');

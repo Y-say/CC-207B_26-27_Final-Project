@@ -194,19 +194,25 @@ class _ApplicationReviewCardState extends ConsumerState<ApplicationReviewCard> {
   Future<void> _approve() async {
     final ok = await showConfirmDialog(
       context,
-      title: 'Approve ${d.pharmacyName}?',
-      subject: '${d.branchName} · ${d.displayId}',
-      whatWillHappen: const [
-        'The pharmacy goes live and patients can find it once it adds inventory.',
-        "The owner's account is unlocked and they're notified.",
-        'The approval is saved in the audit records.',
-      ],
-      actionLabel: 'Approve pharmacy',
+      title: 'Approve pharmacy?',
+      message: 'Are you sure you want to approve this pharmacy?',
+      actionLabel: 'Approve',
+      cancelLabel: 'Cancel',
     );
     if (ok) await _run(() => _service.approve(d.id), 'Pharmacy approved.');
   }
 
   Future<void> _reject() async {
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Reject application?',
+      message: 'Are you sure you want to reject this pharmacy application?',
+      actionLabel: 'Reject',
+      cancelLabel: 'Cancel',
+      destructive: true,
+    );
+    if (!ok || !mounted) return;
+
     final reason = await showReasonDialog(
       context,
       title: 'Reject application',
