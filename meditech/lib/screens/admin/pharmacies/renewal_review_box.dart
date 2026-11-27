@@ -73,30 +73,36 @@ class _RenewalReviewBoxState extends ConsumerState<RenewalReviewBox> {
     }
   }
 
-  // Ask first, then accept
+  // Confirm before accepting
   Future<void> _accept(LtoRenewal r) async {
     final ok = await showConfirmDialog(
       context,
-      title: 'Accept this renewed LTO?',
-      subject: 'LTO ${r.ltoNumber}',
-      whatWillHappen: const [
-        "The pharmacy's LTO number and expiry change to the renewed ones.",
-        'The owner is told it was accepted.',
-        'Next: record a "Matched and valid" FDA check above, then activate the pharmacy.',
-      ],
-      actionLabel: 'Accept renewal',
+      title: 'Accept LTO renewal?',
+      message: 'Are you sure you want to accept this renewed LTO?',
+      actionLabel: 'Accept',
+      cancelLabel: 'Cancel',
     );
     if (ok) await _review(r, true);
   }
 
-  // Ask for a reason, then reject
+  // Confirm before asking for the required rejection reason
   Future<void> _reject(LtoRenewal r) async {
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Reject LTO renewal?',
+      message: 'Are you sure you want to reject this renewed LTO? The owner will be notified.',
+      actionLabel: 'Reject',
+      cancelLabel: 'Cancel',
+      destructive: true,
+    );
+    if (!ok || !mounted) return;
+
     final reason = await showReasonDialog(
       context,
-      title: 'Reject this renewed LTO?',
-      description: 'The owner sees this reason and can send it again.',
-      actionLabel: 'Reject renewal',
-      hint: 'e.g. The photo is blurry; the expiry date cannot be read.',
+      title: 'Reason for rejecting renewal',
+      description: 'Enter the reason that will be sent to the owner.',
+      actionLabel: 'Reject',
+      cancelLabel: 'Cancel',
     );
     if (reason != null) await _review(r, false, reason);
   }

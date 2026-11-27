@@ -9,22 +9,30 @@ Future<String?> showReasonDialog(
   required String title,
   required String description,
   required String actionLabel,
+  String cancelLabel = 'Back',
   String hint = '',
 }) {
   return showDialog<String>(
     context: context,
     builder: (context) => _ReasonDialog(
-      title: title, description: description, actionLabel: actionLabel, hint: hint),
+      title: title,
+      description: description,
+      actionLabel: actionLabel,
+      cancelLabel: cancelLabel,
+      hint: hint,
+    ),
   );
 }
 
 class _ReasonDialog extends StatefulWidget {
   const _ReasonDialog({
-    required this.title, required this.description, required this.actionLabel, required this.hint});
+    required this.title, required this.description, required this.actionLabel,
+    required this.cancelLabel, required this.hint});
 
   final String title;
   final String description;
   final String actionLabel;
+  final String cancelLabel;
   final String hint;
 
   @override
@@ -74,7 +82,7 @@ class _ReasonDialogState extends State<_ReasonDialog> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Back'),
+                      child: Text(widget.cancelLabel),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
