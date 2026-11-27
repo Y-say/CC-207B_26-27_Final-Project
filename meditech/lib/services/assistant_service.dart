@@ -6,18 +6,30 @@ import '../utils/app_failure.dart';
 
 // Sends one question to the assistant function
 abstract class AssistantService {
-  Future<String> ask(String message);
+  Future<String> ask(
+    String message, {
+    List<Map<String, String>> history = const [],
+    Map<String, dynamic>? location,
+  });
 }
 
 class SupabaseAssistantService implements AssistantService {
   SupabaseClient get _client => Supabase.instance.client;
 
   @override
-  Future<String> ask(String message) async {
+  Future<String> ask(
+    String message, {
+    List<Map<String, String>> history = const [],
+    Map<String, dynamic>? location,
+  }) async {
     try {
       final response = await _client.functions.invoke(
         'ai-assistant',
-        body: {'message': message.trim()},
+        body: {
+          'message': message.trim(),
+          if (history.isNotEmpty) 'history': history,
+          'location': ?location,
+        },
       );
       final data = response.data;
       if (data is Map) {
