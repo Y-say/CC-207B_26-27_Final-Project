@@ -25,6 +25,7 @@ class OsmListing {
     this.replacedByPharmacyName,
     this.syncedAt,
     this.distanceMeters,
+    this.imageUrl,
   });
 
   final String id;
@@ -40,6 +41,7 @@ class OsmListing {
   final String? replacedByPharmacyName;
   final DateTime? syncedAt;
   final int? distanceMeters;
+  final String? imageUrl;
 
   factory OsmListing.fromJson(Map<String, dynamic> json) {
     final branch = json['branches'];
@@ -72,6 +74,13 @@ class OsmListing {
           ? DateTime.tryParse(json['synced_at'] as String)
           : null,
       distanceMeters: (json['distance_meters'] as num?)?.toInt(),
+      imageUrl: _nonEmptyString(json['image_url'] as String?),
     );
   }
+}
+
+String? _nonEmptyString(String? value) {
+  if (value == null) return null;
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
 }

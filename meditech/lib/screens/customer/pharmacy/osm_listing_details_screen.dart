@@ -7,9 +7,11 @@ import 'package:latlong2/latlong.dart';
 import '../../../models/osm_listing.dart';
 import '../../../providers/osm_listing_providers.dart';
 import '../../../widgets/common/async_view.dart';
+import '../../../widgets/common/customer_app_bar.dart';
 import '../../../widgets/common/status_badge.dart';
 import '../../../widgets/theme/app_colors.dart';
 import '../../../widgets/theme/app_spacing.dart';
+import 'osm_directions_navigation.dart';
 
 // Customer details screen for a pharmacy listed from OpenStreetMap ("Not on MediTech")
 class OsmListingDetailsScreen extends ConsumerWidget {
@@ -24,6 +26,14 @@ class OsmListingDetailsScreen extends ConsumerWidget {
   final OsmListing? initialListing;
   final VoidCallback? onGetDirections;
 
+  void _openDirections(BuildContext context, OsmListing listing) {
+    if (onGetDirections != null) {
+      onGetDirections!();
+      return;
+    }
+    pushOsmListingDirections(context, listing);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncListing = initialListing != null
@@ -31,10 +41,19 @@ class OsmListingDetailsScreen extends ConsumerWidget {
         : ref.watch(osmListingDetailProvider(listingId));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Pharmacy'),
-        backgroundColor: AppColors.surface,
+        title: const CustomerLocationAppBarTitle(
+          heading: 'Pharmacy details',
+          icon: Icons.local_pharmacy_outlined,
+          headingStyle: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppColors.text,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         foregroundColor: AppColors.text,
         elevation: 0,
       ),
@@ -43,89 +62,115 @@ class OsmListingDetailsScreen extends ConsumerWidget {
         onRetry: () => ref.invalidate(osmListingDetailProvider(listingId)),
         builder: (listing) {
           if (listing == null) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.store_mall_directory_outlined,
-                      size: 48,
-                      color: AppColors.textMuted,
-                    ),
-                    SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Pharmacy not found',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'This OpenStreetMap listing may have been hidden or replaced by a registered pharmacy.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textMuted),
-                    ),
-                  ],
-                ),
-              ),
+            return const StateMessage(
+              icon: Icons.store_mall_directory_outlined,
+              message:
+                  'This OpenStreetMap listing may have been hidden or replaced by a registered pharmacy.',
             );
           }
 
           final point = LatLng(listing.latitude, listing.longitude);
+          final photoUrl = listing.imageUrl;
+          final mapHeight =
+              photoUrl != null && photoUrl.isNotEmpty ? 140.0 : 200.0;
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.xl,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Mini map pin preview
+                if (photoUrl != null && photoUrl.isNotEmpty) ...[
+                  _OsmListingPhoto(url: photoUrl),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   child: SizedBox(
-                    height: 140,
-                    child: FlutterMap(
-                      options: MapOptions(
-                        initialCenter: point,
-                        initialZoom: 16,
-                        interactionOptions: const InteractionOptions(
-                          flags: InteractiveFlag.none,
-                        ),
-                      ),
+                    height: mapHeight,
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.meditech.app',
-                        ),
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              point: point,
-                              width: 36,
-                              height: 36,
-                              child: const Icon(
-                                Icons.location_on,
-                                color: AppColors.primary,
-                                size: 34,
-                              ),
+                        FlutterMap(
+                          options: MapOptions(
+                            initialCenter: point,
+                            initialZoom: 16,
+                            interactionOptions: const InteractionOptions(
+                              flags: InteractiveFlag.none,
+                            ),
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate:
+                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.meditech.app',
+                            ),
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: point,
+                                  width: 40,
+                                  height: 40,
+                                  child: const Icon(
+                                    Icons.location_on,
+                                    color: AppColors.primary,
+                                    size: 38,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
+                        ),
+                        Positioned(
+                          left: AppSpacing.sm,
+                          bottom: AppSpacing.sm,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: 4,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.map_outlined,
+                                    size: 14,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'OpenStreetMap',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-
-                // Main pharmacy info card with "Not on MediTech" badge and Get directions button
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.border),
                   ),
                   child: Column(
@@ -138,94 +183,77 @@ class OsmListingDetailsScreen extends ConsumerWidget {
                           color: AppColors.text,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xs),
-                      const StatusBadge('Not on MediTech'),
+                      const SizedBox(height: AppSpacing.sm),
+                      const StatusBadge('Not on MediTech', tone: BadgeTone.warning),
                       const SizedBox(height: AppSpacing.md),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 18,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          Expanded(
-                            child: Text(
-                              listing.address,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: AppColors.textMuted),
-                            ),
-                          ),
-                        ],
+                      const Divider(height: 1),
+                      const SizedBox(height: AppSpacing.md),
+                      _DetailLine(
+                        icon: Icons.location_on_outlined,
+                        text: listing.address,
                       ),
                       if (listing.lastEditedThere != null) ...[
-                        const SizedBox(height: AppSpacing.xs),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.map_outlined,
-                              size: 18,
-                              color: AppColors.textMuted,
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(
-                              'From OpenStreetMap · Updated ${listing.lastEditedThere}',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: AppColors.textMuted),
-                            ),
-                          ],
+                        const SizedBox(height: AppSpacing.sm),
+                        _DetailLine(
+                          icon: Icons.update_outlined,
+                          text: 'Map data last updated ${listing.lastEditedThere}',
                         ),
                       ],
                       const SizedBox(height: AppSpacing.md),
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
-                          onPressed:
-                              onGetDirections ??
-                              () {
-                                final coords =
-                                    '${listing.latitude.toStringAsFixed(5)},${listing.longitude.toStringAsFixed(5)}';
-                                Clipboard.setData(ClipboardData(text: coords));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Coordinates copied for ${listing.name} ($coords)',
-                                    ),
-                                  ),
-                                );
-                              },
+                          onPressed: () => _openDirections(context, listing),
                           icon: const Icon(Icons.near_me_outlined, size: 18),
                           label: const Text('Get directions'),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            final coords =
+                                '${listing.latitude.toStringAsFixed(5)},${listing.longitude.toStringAsFixed(5)}';
+                            Clipboard.setData(ClipboardData(text: coords));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Coordinates copied ($coords)'),
+                              ),
+                            );
+                          },
+                          child: const Text('Copy coordinates'),
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-
-                // Notice explaining why medicines and reservations are unavailable
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
+                    color: AppColors.warningLight,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.35),
+                    ),
                   ),
-                  child: Row(
+                  child: const Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.info_outline,
                         size: 20,
-                        color: AppColors.textMuted,
+                        color: AppColors.warning,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
+                      SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
                           'This pharmacy has not registered on MediTech yet. Medicine prices, stock, and reservations are only available for registered pharmacies.',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppColors.textMuted),
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.4,
+                            color: AppColors.text,
+                          ),
                         ),
                       ),
                     ],
@@ -236,6 +264,91 @@ class OsmListingDetailsScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _OsmListingPhoto extends StatelessWidget {
+  const _OsmListingPhoto({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        height: 200,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => ColoredBox(
+                color: AppColors.neutralLight,
+                child: Icon(
+                  Icons.local_pharmacy_outlined,
+                  size: 48,
+                  color: AppColors.textMuted.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+            Positioned(
+              left: AppSpacing.sm,
+              bottom: AppSpacing.sm,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    'Photo from OpenStreetMap',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailLine extends StatelessWidget {
+  const _DetailLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.textMuted),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.textMuted,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

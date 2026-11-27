@@ -84,6 +84,20 @@ class _FakeOsmListingService extends OsmListingService {
 }
 
 void main() {
+  test('OsmListing.fromJson parses image_url', () {
+    final listing = OsmListing.fromJson({
+      'id': 'osm-1',
+      'osm_id': 'node/1',
+      'name': 'Test',
+      'address': 'Addr',
+      'latitude': 10.7,
+      'longitude': 122.5,
+      'status': 'shown',
+      'image_url': 'https://example.com/p.jpg',
+    });
+    expect(listing.imageUrl, 'https://example.com/p.jpg');
+  });
+
   final sampleListings = <OsmListing>[
     const OsmListing(
       id: 'osm-1',
