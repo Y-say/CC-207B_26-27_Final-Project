@@ -45,6 +45,36 @@ Future<void> pumpCatalogue(WidgetTester tester, List<CatalogueMedicine> rows, {S
 }
 
 void main() {
+  testWidgets('standalone catalogue screen returns to the previous dashboard', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [catalogueListProvider.overrideWith((ref) async => [])],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const CatalogueScreen(),
+                  ),
+                ),
+                child: const Text('Dashboard'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Dashboard'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Back to dashboard'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Back to dashboard'));
+    await tester.pumpAndSettle();
+    expect(find.text('Dashboard'), findsOneWidget);
+  });
+
   // Registration, generic, brand, strength and form, and classification each get their own column
   testWidgets('shows catalogue rows in separate columns', (tester) async {
     await pumpCatalogue(tester, [med('1')]);

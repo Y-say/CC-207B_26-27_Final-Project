@@ -212,6 +212,12 @@ class _PharmaciesScreenState extends ConsumerState<PharmaciesScreen> {
                           background: _filter == 'all' ? Colors.white : AppColors.primaryLight,
                         ),
                       ),
+                    if (!widget.drawerInShell)
+                      IconButton(
+                        tooltip: 'Back to dashboard',
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: const Icon(Icons.arrow_back),
+                      ),
                   ],
                 ),
               if (widget.showHeader) const SizedBox(height: AppSpacing.lg),
