@@ -7,6 +7,7 @@ import '../../../models/lto_renewal.dart';
 import '../../../models/pharmacy_application.dart';
 import '../../../providers/lto_renewal_providers.dart';
 import '../../../services/lto_renewal_service.dart';
+import '../../../widgets/pharmacy/lto_renewal_guidance.dart';
 import '../../../widgets/common/app_text_field.dart';
 import '../../../widgets/common/async_view.dart';
 import '../../../widgets/theme/app_colors.dart';
@@ -16,7 +17,7 @@ import '../../../widgets/theme/app_spacing.dart';
 class LtoRenewalScreen extends ConsumerWidget {
   const LtoRenewalScreen({super.key, this.onSignOut});
 
-  final VoidCallback? onSignOut; // routing connects this later
+  final VoidCallback? onSignOut;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -283,11 +284,7 @@ class _RenewalFormState extends ConsumerState<_RenewalForm> {
           const SizedBox(height: AppSpacing.lg),
         ],
 
-        const Text('Send your renewed License to Operate',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        const SizedBox(height: AppSpacing.xs),
-        const Text('The administrator verifies it against the official registry, then brings your pharmacy back online.',
-            style: TextStyle(color: AppColors.textMuted)),
+        const LtoRenewalPrepPanel.uploadStep(),
         const SizedBox(height: AppSpacing.md),
 
         AppTextField(

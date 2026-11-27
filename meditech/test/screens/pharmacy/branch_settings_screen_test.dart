@@ -10,9 +10,13 @@ import 'package:meditech/screens/pharmacy/branch_settings/branch_settings_screen
 import 'package:meditech/services/branch_settings_service.dart';
 
 class _FakeBranchSettingsService implements BranchSettingsService {
+  _FakeBranchSettingsService({this.fdaLtoExpiry});
+
+  final DateTime? fdaLtoExpiry;
+
   @override
   Future<BranchSettings> loadSettings() async {
-    return const BranchSettings(
+    return BranchSettings(
       branchId: 'b-1',
       pharmacyName: 'Supreme Pharmacy',
       branchName: 'La Paz Branch',
@@ -20,6 +24,7 @@ class _FakeBranchSettingsService implements BranchSettingsService {
       contactNumber: '09171234567',
       operatingHours: 'Mon-Sun, 8:00 AM – 9:00 PM',
       fdaLto: 'LTO-3000-000001',
+      fdaLtoExpiry: fdaLtoExpiry,
     );
   }
 
@@ -111,6 +116,33 @@ void main() {
       expect(find.text('Branch settings'), findsOneWidget);
       expect(find.text('Save changes'), findsNothing);
       expect(find.textContaining('PRC'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'BranchSettingsScreen shows LTO renewal checklist when expiry is within 60 days',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final soon = DateTime.now().add(const Duration(days: 14));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            branchSettingsServiceProvider.overrideWithValue(
+              _FakeBranchSettingsService(fdaLtoExpiry: soon),
+            ),
+            sessionProvider.overrideWith(_OwnerSession.new),
+          ],
+          child: const MaterialApp(home: BranchSettingsScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('LTO expiring soon'), findsOneWidget);
+      expect(find.textContaining('not while the pharmacy is still online'), findsOneWidget);
     },
   );
 }

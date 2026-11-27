@@ -9,6 +9,7 @@ import '../../../utils/app_failure.dart';
 import '../../../utils/pick_profile_image.dart';
 import '../../../widgets/common/async_view.dart';
 import '../../../widgets/common/pharmacy_storefront_hero.dart';
+import '../../../widgets/pharmacy/lto_renewal_guidance.dart';
 import '../../../widgets/pharmacy/pharmacy_user_profile_card.dart' show PharmacySettingsSectionCard;
 import '../../../widgets/theme/app_colors.dart';
 import '../../../widgets/theme/app_spacing.dart';
@@ -127,6 +128,21 @@ class _BranchSettingsScreenState extends ConsumerState<BranchSettingsScreen> {
         '${expiry.day.toString().padLeft(2, '0')}/'
         '${expiry.year}';
     return 'FDA License to Operate: $lto · expires $expiryLabel · $verified';
+  }
+
+  static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  static bool _ltoExpired(DateTime? expiry) {
+    if (expiry == null) return false;
+    return !_dateOnly(expiry).isAfter(_dateOnly(DateTime.now()));
+  }
+
+  static bool _ltoNeedsAttention(DateTime? expiry) {
+    if (expiry == null) return false;
+    final expDay = _dateOnly(expiry);
+    final day = _dateOnly(DateTime.now());
+    if (!expDay.isAfter(day)) return true;
+    return expDay.difference(day).inDays <= 60;
   }
 
   @override
@@ -266,6 +282,12 @@ class _BranchSettingsScreenState extends ConsumerState<BranchSettingsScreen> {
                             color: const Color(0xFF6B7280),
                           ),
                         ),
+                        if (isOwner && _ltoNeedsAttention(settings.fdaLtoExpiry)) ...[
+                          const SizedBox(height: 12),
+                          LtoRenewalPrepPanel.branchSettings(
+                            ltoExpired: _ltoExpired(settings.fdaLtoExpiry),
+                          ),
+                        ],
                         if (isOwner) ...[
                           const SizedBox(height: 18),
                           Align(
