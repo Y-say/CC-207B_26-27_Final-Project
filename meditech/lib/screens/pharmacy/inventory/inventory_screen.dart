@@ -154,24 +154,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     }
   }
 
-  String _names(List<InventoryItem> items) =>
-      items.map((i) => '${i.brandName} ${i.strength}').join(', ');
-
   Future<void> _markOutOfStock(List<InventoryItem> items) async {
+    final itemNames = [for (final i in items) '${i.brandName} ${i.strength}'];
+    final useDropdown = itemNames.length >= 2;
     final ok = await showTabletConfirmDialog(
       context: context,
       title: items.length == 1
           ? 'Mark 1 medicine out of stock?'
           : 'Mark ${items.length} medicines out of stock?',
-      targetName: _names(items),
-      consequences: const [
-        'Patients see it as Unavailable right away and can\'t reserve it.',
-        'Your recorded count is kept for history. It isn\'t changed to 0.',
-        'Confirmed reservations keep their held units. Check them if the '
-            'shelf is truly empty.',
-        'CSV/Excel imports won\'t switch this off. Use Back in stock when '
-            'the shelf is refilled.',
-      ],
+      targetName: useDropdown ? null : itemNames.join(', '),
+      items: useDropdown ? itemNames : null,
+      message: items.length == 1
+          ? 'Are you sure you want to mark this medicine out of stock?'
+          : 'Are you sure you want to mark these ${items.length} medicines out of stock?',
+      cancelLabel: 'Cancel',
       confirmLabel: 'Mark out of stock',
       isDanger: true,
     );
@@ -194,43 +190,28 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   Future<void> _setActive(List<InventoryItem> items, bool active) async {
-    if (!active) {
-      final ok = await showTabletConfirmDialog(
-        context: context,
-        title: items.length == 1
-            ? 'Deactivate 1 listing?'
-            : 'Deactivate ${items.length} listings?',
-        targetName: _names(items),
-        consequences: const [
-          'Hidden from patients: not in search, on your pharmacy page, or in '
-              'carts.',
-          'New reservations are blocked. Reservations already made aren\'t '
-              'affected.',
-          'Stays in Inventory under the Inactive filter, with its stock and '
-              'history.',
-          'You can activate it again anytime.',
-          'Still selling it and the shelf is just empty? Use Mark out of '
-              'stock instead.',
-        ],
-        confirmLabel: 'Deactivate',
-        isDanger: true,
-      );
-      if (ok != true) return;
-    } else {
-      final ok = await showTabletConfirmDialog(
-        context: context,
-        title: items.length == 1
-            ? 'Activate 1 listing?'
-            : 'Activate ${items.length} listings?',
-        targetName: _names(items),
-        consequences: const [
-          'Patients can see it and reserve it again.',
-          'The last recorded stock is shown. Edit it first if it changed.',
-        ],
-        confirmLabel: 'Activate',
-      );
-      if (ok != true) return;
-    }
+    final itemNames = [for (final i in items) '${i.brandName} ${i.strength}'];
+    final single = items.length == 1;
+    final useDropdown = itemNames.length >= 2;
+    final ok = await showTabletConfirmDialog(
+      context: context,
+      title: active
+          ? (single ? 'Activate 1 listing?' : 'Activate ${items.length} listings?')
+          : (single ? 'Deactivate 1 listing?' : 'Deactivate ${items.length} listings?'),
+      targetName: useDropdown ? null : itemNames.join(', '),
+      items: useDropdown ? itemNames : null,
+      message: active
+          ? (single
+              ? 'Are you sure you want to activate this listing?'
+              : 'Are you sure you want to activate these ${items.length} listings?')
+          : (single
+              ? 'Are you sure you want to deactivate this listing?'
+              : 'Are you sure you want to deactivate these ${items.length} listings?'),
+      cancelLabel: 'Cancel',
+      confirmLabel: active ? 'Activate' : 'Deactivate',
+      isDanger: !active,
+    );
+    if (ok != true) return;
     await _run(
       () => ref.read(inventoryServiceProvider).setListingActive([
         for (final i in items) i.id,
@@ -313,8 +294,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     return AsyncView<List<InventoryItem>>(
       value: inventory,
-      isEmpty: (items) => items.isEmpty,
-      emptyMessage: 'No inventory entries yet. Add your first medicine.',
       onRetry: () => ref.invalidate(inventoryProvider),
       builder: (all) {
         final table = _buildInventory(all);
@@ -1048,7 +1027,17 @@ class _BackInStockDialogState extends State<_BackInStockDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Mark back in stock'),
+      titlePadding: const EdgeInsets.fromLTRB(28, 28, 28, 8),
+      contentPadding: const EdgeInsets.fromLTRB(28, 8, 28, 20),
+      actionsPadding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
+      title: const Text(
+        'Mark back in stock',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF111827),
+        ),
+      ),
       content: SizedBox(
         width: 520,
         child: SingleChildScrollView(
@@ -1056,12 +1045,11 @@ class _BackInStockDialogState extends State<_BackInStockDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Count what\'s on the shelf and enter the quantity. MediTech '
-                'isn\'t connected to your POS, so it doesn\'t restore an old '
-                'count or calculate one. Your number replaces the recorded '
-                'stock, and availability is worked out from it.',
-                style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+              Text(
+                'Enter the current shelf count to mark '
+                '${widget.items.length == 1 ? 'this medicine' : 'these medicines'} '
+                'back in stock.',
+                style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
               ),
               const SizedBox(height: AppSpacing.md),
               for (final item in widget.items)
@@ -1132,10 +1120,12 @@ class _BackInStockDialogState extends State<_BackInStockDialog> {
                     ],
                   ),
                 ),
-              const Text(
-                'After saving: the Out of Stock switch turns off, Last '
-                'updated becomes now, and patients can reserve it again.',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Are you sure you want to mark '
+                '${widget.items.length == 1 ? 'this medicine' : 'these medicines'} '
+                'back in stock?',
+                style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
               ),
             ],
           ),

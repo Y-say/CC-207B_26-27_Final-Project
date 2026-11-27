@@ -141,19 +141,26 @@ class _StockAlertsScreenState extends ConsumerState<StockAlertsScreen> {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
-              title: const Text('Mark back in stock'),
+              titlePadding: const EdgeInsets.fromLTRB(28, 28, 28, 8),
+              contentPadding: const EdgeInsets.fromLTRB(28, 8, 28, 20),
+              actionsPadding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
+              title: const Text(
+                'Mark back in stock',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
               content: SizedBox(
-                width: 480,
+                width: 500,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Count what\'s on the shelf and enter the quantity. MediTech '
-                        'isn\'t connected to your POS, so it doesn\'t restore an old '
-                        'count or calculate one. Your number replaces the recorded '
-                        'stock, and availability is worked out from it.',
+                        'Enter the current shelf count to mark this medicine back in stock.',
                         style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                       ),
                       const SizedBox(height: AppSpacing.lg),
@@ -223,6 +230,11 @@ class _StockAlertsScreenState extends ConsumerState<StockAlertsScreen> {
                             ],
                           ],
                         ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      const Text(
+                        'Are you sure you want to mark this medicine back in stock?',
+                        style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                       ),
                     ],
                   ),

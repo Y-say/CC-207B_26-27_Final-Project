@@ -422,11 +422,9 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
       context: context,
       title: 'Add employee account?',
       targetName: '${_firstName.text.trim()} ${_lastName.text.trim()} (@${_username.text.trim()})',
-      consequences: [
-        'Creates a ${_role == 'pharmacist' ? 'Pharmacist' : 'Staff'} sign-in for your branch.',
-        'Generates a one-time password they must change on first sign-in.',
-        if (_role == 'pharmacist') 'Their PRC license starts as Pending until verified.',
-      ],
+      message:
+          'Are you sure you want to create this ${_role == 'pharmacist' ? 'Pharmacist' : 'Staff'} account?',
+      cancelLabel: 'Cancel',
       confirmLabel: 'Create account',
     );
     if (confirmed != true || !mounted) return;
