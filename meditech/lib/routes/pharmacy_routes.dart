@@ -13,6 +13,7 @@ import '../screens/pharmacy/branch_settings/branch_settings_screen.dart';
 import '../screens/pharmacy/profile/pharmacy_edit_profile_screen.dart';
 import '../screens/pharmacy/profile/pharmacy_profile_screen.dart';
 import '../screens/pharmacy/reservations/reservations_screen.dart';
+import '../screens/pharmacy/renewal/lto_renewal_screen.dart';
 import '../screens/pharmacy/sign_in/pharmacy_sign_in_screen.dart';
 import '../screens/customer/forgot_password/check_email_screen.dart';
 import '../screens/customer/forgot_password/forgot_password_route_extra.dart';
@@ -21,7 +22,6 @@ import '../screens/customer/forgot_password/reset_password_screen.dart';
 import '../screens/pharmacy/stock_alerts/stock_alerts_screen.dart';
 import '../screens/shared/change_password_screen.dart';
 import '../screens/shared/notification_list_screen.dart';
-import '../screens/shared/suspended_owner_screen.dart';
 import 'password_redirect.dart';
 
 // Pages a pharmacy user can open
@@ -143,7 +143,14 @@ final pharmacyRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/suspended',
-        builder: (context, state) => const SuspendedOwnerScreen(),
+        builder: (context, state) => Consumer(
+          builder: (context, ref, _) => LtoRenewalScreen(
+            onSignOut: () async {
+              await ref.read(sessionProvider.notifier).signOut();
+              if (context.mounted) context.go('/');
+            },
+          ),
+        ),
       ),
       GoRoute(
         path: '/change-password',
