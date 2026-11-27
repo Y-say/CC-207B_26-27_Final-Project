@@ -13,6 +13,7 @@ import '../../../widgets/theme/app_spacing.dart';
 // Shared field patterns matching the database constraints
 final _namePattern = RegExp(r"^[A-Za-zÑñ .'-]{2,50}$");
 final _usernamePattern = RegExp(r'^[A-Za-z0-9_]{4,20}$');
+final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 final _prcPattern = RegExp(r'^[0-9]{7}$');
 
 String formatEmployeeDate(DateTime date) {
@@ -142,6 +143,107 @@ class EmployeeProfileDraft {
   final String lastName;
 }
 
+Future<String?> showSetEmployeeContactEmailDialog(
+  BuildContext context, {
+  required Employee employee,
+}) {
+  return showDialog<String>(
+    context: context,
+    builder: (context) => _SetEmployeeContactEmailDialog(employee: employee),
+  );
+}
+
+class _SetEmployeeContactEmailDialog extends StatefulWidget {
+  const _SetEmployeeContactEmailDialog({required this.employee});
+
+  final Employee employee;
+
+  @override
+  State<_SetEmployeeContactEmailDialog> createState() =>
+      _SetEmployeeContactEmailDialogState();
+}
+
+class _SetEmployeeContactEmailDialogState extends State<_SetEmployeeContactEmailDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _email = TextEditingController();
+  String? _formError;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = widget.employee.fullName;
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Set contact Gmail',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$name can use this address on branch sign-in → Forgot password.',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                if (_formError != null) ...[
+                  Text(_formError!, style: const TextStyle(color: AppColors.danger)),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+                AppTextField(
+                  label: 'Gmail',
+                  hint: 'name@gmail.com',
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (v) {
+                    final trimmed = (v ?? '').trim();
+                    if (trimmed.isEmpty) return 'Enter an email.';
+                    return _emailPattern.hasMatch(trimmed) ? null : 'Enter a valid email.';
+                  },
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          if (!(_formKey.currentState?.validate() ?? false)) return;
+                          Navigator.of(context).pop(_email.text.trim());
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 Future<EmployeeProfileDraft?> showEditEmployeeProfileDialog(
   BuildContext context, {
   required Employee employee,
@@ -213,12 +315,12 @@ class _EditEmployeeProfileDialogState extends State<_EditEmployeeProfileDialog> 
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  'Edit profile',
+                  'Edit employee name',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${widget.employee.displayId} · Username cannot be changed here.',
+                  '${widget.employee.displayId} · Name only. They update username and Gmail on Profile → Edit profile.',
                   style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -338,6 +440,7 @@ Future<CreatedEmployee?> showAddEmployeeDialog(
     String? middleName,
     required String lastName,
     required String username,
+    String? email,
     required String role,
     String? prcLicenseNo,
     DateTime? prcLicenseExpiry,
@@ -356,6 +459,7 @@ class _AddEmployeeDialog extends StatefulWidget {
     String? middleName,
     required String lastName,
     required String username,
+    String? email,
     required String role,
     String? prcLicenseNo,
     DateTime? prcLicenseExpiry,
@@ -373,6 +477,7 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
   final _middleName = TextEditingController();
   final _lastName = TextEditingController();
   final _username = TextEditingController();
+  final _email = TextEditingController();
   final _prcNo = TextEditingController();
 
   String _role = 'staff';
@@ -387,6 +492,7 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
     _middleName.dispose();
     _lastName.dispose();
     _username.dispose();
+    _email.dispose();
     _prcNo.dispose();
     super.dispose();
   }
@@ -438,6 +544,7 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
         middleName: _middleName.text.trim().isEmpty ? null : _middleName.text.trim(),
         lastName: _lastName.text.trim(),
         username: _username.text.trim(),
+        email: _email.text.trim().isEmpty ? null : _email.text.trim(),
         role: _role,
         prcLicenseNo: _role == 'pharmacist' ? _prcNo.text.trim() : null,
         prcLicenseExpiry: _role == 'pharmacist' ? _prcExpiry : null,
@@ -475,7 +582,8 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
                 const Text(
-                  'Employees sign in with a username. No email address is needed.',
+                  'Employees sign in with a username and password. Email is optional '
+                  '(for password recovery); if you leave it blank, the app uses an internal sign-in address.',
                   style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -535,6 +643,21 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
                   validator: (v) => _usernamePattern.hasMatch((v ?? '').trim())
                       ? null
                       : '4 to 20 letters, numbers, or underscores.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppTextField(
+                  label: 'Email (optional)',
+                  hint: 'name@example.com',
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  errorText: _fieldErrors['email'],
+                  validator: (v) {
+                    final trimmed = (v ?? '').trim();
+                    if (trimmed.isEmpty) return null;
+                    return _emailPattern.hasMatch(trimmed)
+                        ? null
+                        : 'Enter a valid email.';
+                  },
                 ),
                 const SizedBox(height: AppSpacing.md),
                 const Text('Role',

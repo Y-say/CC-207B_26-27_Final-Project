@@ -10,9 +10,16 @@ import '../../../widgets/theme/app_spacing.dart';
 
 // Enter the emailed code and save a new password
 class ResetPasswordScreen extends ConsumerStatefulWidget {
-  const ResetPasswordScreen({super.key, this.identifier});
+  const ResetPasswordScreen({
+    super.key,
+    this.identifier,
+    this.signInPath = '/sign-in',
+    this.signedInHint = 'Sign in with your email and new password.',
+  });
 
   final String? identifier;
+  final String signInPath;
+  final String signedInHint;
 
   @override
   ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -75,7 +82,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             newPassword: _password.text,
           );
       if (!mounted) return;
-      await showPasswordChangedModal(context);
+      await showPasswordChangedModal(
+        context,
+        signInPath: widget.signInPath,
+        message: widget.signedInHint,
+      );
     } on AppFailure catch (error) {
       setState(() {
         _offline = error.message == 'Could not reach Supabase.';

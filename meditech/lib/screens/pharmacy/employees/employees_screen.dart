@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../models/employee.dart';
@@ -20,8 +21,7 @@ import '../../../widgets/theme/app_spacing.dart';
 import '../../../widgets/theme/status_badge.dart';
 import 'employee_dialogs.dart';
 
-// Ph-33 & Ph-34: Branch owner views employees, adds staff, changes roles,
-// updates/verifies PRC licenses, resets passwords, and toggles account status.
+// Ph-33 & Ph-34: Owner-only. Pharmacists submit PRC on Profile; owner verifies here.
 class EmployeesScreen extends ConsumerStatefulWidget {
   const EmployeesScreen({super.key});
 
@@ -57,15 +57,16 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     setState(() => _showFilters = !_showFilters);
   }
 
-  Future<void> _runAction(Future<void> Function() work) async {
+  Future<bool> _runAction(Future<void> Function() work) async {
     setState(() {
       _busyAction = true;
       _offline = false;
     });
     try {
       await work();
+      return true;
     } on AppFailure catch (error) {
-      if (!mounted) return;
+      if (!mounted) return false;
       if (error.message == 'Could not reach Supabase.') {
         setState(() => _offline = true);
       } else {
@@ -73,9 +74,23 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
           SnackBar(content: Text(error.message)),
         );
       }
+      return false;
     } finally {
       if (mounted) setState(() => _busyAction = false);
     }
+  }
+
+  Future<void> _showDoneModal({
+    required String title,
+    required List<String> bullets,
+  }) {
+    return showTabletMessageDialog(
+      context: context,
+      title: title,
+      bullets: bullets,
+      isWarning: false,
+      buttonLabel: 'Done',
+    );
   }
 
   Future<void> _addEmployee() async {
@@ -86,6 +101,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
         middleName,
         required lastName,
         required username,
+        email,
         required role,
         prcLicenseNo,
         prcLicenseExpiry,
@@ -95,6 +111,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
               middleName: middleName,
               lastName: lastName,
               username: username,
+              email: email,
               role: role,
               prcLicenseNo: prcLicenseNo,
               prcLicenseExpiry: prcLicenseExpiry,
@@ -107,7 +124,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
       context,
       title: 'Employee added',
       employeeName: created.displayId,
-      username: null,
+      username: created.username,
       temporaryPassword: created.temporaryPassword,
     );
   }
@@ -160,12 +177,25 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    await _runAction(() async {
+    final ok = await _runAction(() async {
       await ref.read(employeesProvider.notifier).setActive(
             employeeId: employee.accountId,
             isActive: nextActive,
           );
     });
+    if (!ok || !mounted) return;
+    await _showDoneModal(
+      title: nextActive ? 'Employee reactivated' : 'Employee deactivated',
+      bullets: nextActive
+          ? [
+              '${employee.fullName} · ${employee.displayId}',
+              'They can sign in again with their existing username.',
+            ]
+          : [
+              '${employee.fullName} · ${employee.displayId}',
+              'They were signed out and cannot sign in until reactivated.',
+            ],
+    );
   }
 
   Future<void> _changeRole(Employee employee) async {
@@ -202,7 +232,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    await _runAction(() async {
+    final ok = await _runAction(() async {
       await ref.read(employeesProvider.notifier).changeRole(
             employeeId: employee.accountId,
             newRole: nextRole,
@@ -210,12 +240,26 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
             prcLicenseExpiry: prcExpiry,
           );
     });
+    if (!ok || !mounted) return;
+    await _showDoneModal(
+      title: nextRole == 'pharmacist' ? 'Promoted to pharmacist' : 'Changed to staff',
+      bullets: nextRole == 'pharmacist'
+          ? [
+              '${employee.fullName} · ${employee.displayId}',
+              if (prcNo != null) 'PRC $prcNo on file.',
+              'License is Pending until you verify it.',
+            ]
+          : [
+              '${employee.fullName} · ${employee.displayId}',
+              'They can no longer confirm or release Rx reservations.',
+            ],
+    );
   }
 
   Future<void> _uploadEmployeePhoto(Employee employee) async {
     final picked = await pickProfileImageBytes(context);
     if (picked == null || !mounted) return;
-    await _runAction(() async {
+    final ok = await _runAction(() async {
       final path = await ref.read(employeeServiceProvider).uploadEmployeeAvatar(
             employeeAccountId: employee.accountId,
             fileName: picked.fileName,
@@ -227,9 +271,46 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
       }
       ref.invalidate(employeesProvider);
     });
+    if (!ok || !mounted) return;
+    await _showDoneModal(
+      title: 'Profile photo updated',
+      bullets: [
+        employee.fullName,
+        'The photo appears in the header and employee list.',
+      ],
+    );
+  }
+
+  Future<void> _openPharmacyProfileEdit() async {
+    final changed = await context.push<bool>('/profile/edit');
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Employee photo updated.')),
+    if (changed == true) {
+      ref.invalidate(pharmacyStaffProfileProvider);
+      ref.invalidate(employeesProvider);
+    }
+  }
+
+  Future<void> _setContactEmail(Employee employee) async {
+    final email = await showSetEmployeeContactEmailDialog(
+      context,
+      employee: employee,
+    );
+    if (email == null || !mounted) return;
+
+    final ok = await _runAction(() async {
+      await ref.read(employeeServiceProvider).updateContactEmail(
+            employeeId: employee.accountId,
+            email: email,
+          );
+    });
+    if (!ok || !mounted) return;
+    await _showDoneModal(
+      title: 'Contact Gmail saved',
+      bullets: [
+        employee.fullName,
+        email,
+        'They can use Forgot password on branch sign-in with this Gmail or their username.',
+      ],
     );
   }
 
@@ -240,7 +321,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     );
     if (draft == null || !mounted) return;
 
-    await _runAction(() async {
+    final ok = await _runAction(() async {
       await ref.read(employeesProvider.notifier).updateProfile(
             employeeId: employee.accountId,
             firstName: draft.firstName,
@@ -248,9 +329,19 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
             lastName: draft.lastName,
           );
     });
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Employee profile updated.')),
+    if (!ok || !mounted) return;
+    final middle = (draft.middleName ?? '').trim();
+    final savedName = [
+      draft.firstName.trim(),
+      if (middle.isNotEmpty) middle,
+      draft.lastName.trim(),
+    ].join(' ');
+    await _showDoneModal(
+      title: 'Name updated',
+      bullets: [
+        '$savedName · ${employee.displayId}',
+        'Display name on file was saved. They change username and Gmail on their own Profile.',
+      ],
     );
   }
 
@@ -274,7 +365,7 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    await _runAction(() async {
+    final ok = await _runAction(() async {
       await ref.read(employeesProvider.notifier).updateLicense(
             employeeId: employee.accountId,
             prcLicenseNo: result.prcLicenseNo,
@@ -283,6 +374,21 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
             ownerConfirmed: employee.isOwner,
           );
     });
+    if (!ok || !mounted) return;
+    ref.invalidate(pharmacyStaffProfileProvider);
+    await _showDoneModal(
+      title: result.markVerified ? 'PRC license verified' : 'PRC license saved',
+      bullets: [
+        '${employee.fullName} · PRC ${result.prcLicenseNo}',
+        'Expires ${formatEmployeeDate(result.prcLicenseExpiry)}.',
+        if (result.markVerified)
+          employee.isOwner
+              ? 'You can confirm reservations and release Rx items when this license is current.'
+              : '${employee.firstName} can confirm reservations and release Rx items.'
+        else
+          'Status is Pending until you verify the license under Employees.',
+      ],
+    );
   }
 
   StatusBadge _licenseBadge(Employee employee) {
@@ -415,63 +521,111 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
                               activeFilterCount: filterCount,
                               onFiltersTap: _toggleFilters,
                               columns: const [
-                                TabletColumn(title: 'Employee', flex: 2),
+                                TabletColumn(
+                                  title: 'Employee',
+                                  priority: TabletColumnPriority.high,
+                                  width: 220,
+                                ),
                                 TabletColumn(
                                   title: 'Username',
                                   priority: TabletColumnPriority.medium,
+                                  width: 140,
                                 ),
-                                TabletColumn(title: 'Role'),
+                                TabletColumn(
+                                  title: 'Role',
+                                  priority: TabletColumnPriority.high,
+                                  width: 120,
+                                ),
                                 TabletColumn(
                                   title: 'PRC License',
                                   priority: TabletColumnPriority.medium,
-                                  flex: 2,
+                                  width: 180,
                                 ),
-                                TabletColumn(title: 'Status'),
+                                TabletColumn(
+                                  title: 'Status',
+                                  priority: TabletColumnPriority.high,
+                                  width: 120,
+                                ),
+                                TabletColumn(
+                                  title: 'VIEW',
+                                  priority: TabletColumnPriority.high,
+                                  width: 72,
+                                  alignment: Alignment.center,
+                                ),
                               ],
                               items: filtered,
-                              onItemTap: (emp) => setState(() => _selectedId = emp.accountId),
-                              rowBuilder: (context, emp, index) => [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      emp.fullName,
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                              rowBuilder: (context, emp, index) {
+                                final isSelected = emp.accountId == _selectedId;
+                                return [
+                                  Text(
+                                    '${emp.fullName} · ${emp.displayId}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : const Color(0xFF1A2E22),
                                     ),
-                                    Text(
-                                      emp.displayId,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textMuted,
-                                      ),
+                                  ),
+                                  Text(
+                                    emp.username != null ? '@${emp.username}' : '—',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  StatusBadge(
+                                    emp.roleLabel,
+                                    tone: emp.isOwner
+                                        ? BadgeTone.info
+                                        : emp.isPharmacist
+                                            ? BadgeTone.success
+                                            : BadgeTone.neutral,
+                                  ),
+                                  emp.prcLicenseNo == null
+                                      ? const Text('—')
+                                      : Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                emp.prcLicenseNo!,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            _licenseBadge(emp),
+                                          ],
+                                        ),
+                                  StatusBadge(
+                                    emp.isActive ? 'Active' : 'Deactivated',
+                                    tone: emp.isActive
+                                        ? BadgeTone.success
+                                        : BadgeTone.danger,
+                                  ),
+                                  IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 40,
+                                      minHeight: 40,
                                     ),
-                                  ],
-                                ),
-                                Text(emp.username != null ? '@${emp.username}' : '—'),
-                                StatusBadge(
-                                  emp.roleLabel,
-                                  tone: emp.isOwner
-                                      ? BadgeTone.info
-                                      : emp.isPharmacist
-                                          ? BadgeTone.success
-                                          : BadgeTone.neutral,
-                                ),
-                                emp.prcLicenseNo == null
-                                    ? const Text('—')
-                                    : Wrap(
-                                        spacing: 8,
-                                        crossAxisAlignment: WrapCrossAlignment.center,
-                                        children: [
-                                          Text(emp.prcLicenseNo!),
-                                          _licenseBadge(emp),
-                                        ],
-                                      ),
-                                StatusBadge(
-                                  emp.isActive ? 'Active' : 'Deactivated',
-                                  tone: emp.isActive ? BadgeTone.success : BadgeTone.danger,
-                                ),
-                              ],
+                                    icon: Icon(
+                                      isSelected
+                                          ? Icons.visibility
+                                          : Icons.visibility_outlined,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.textMuted,
+                                      size: 20,
+                                    ),
+                                    tooltip: 'View employee',
+                                    onPressed: () => setState(
+                                      () => _selectedId = emp.accountId,
+                                    ),
+                                  ),
+                                ];
+                              },
                             );
                           },
                         ),
@@ -565,6 +719,10 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
               onUploadPhoto: () => _uploadEmployeePhoto(selected),
               onEditProfile:
                   selected.isOwner ? null : () => _editProfile(selected),
+              onEditPharmacyProfile:
+                  selected.isOwner ? _openPharmacyProfileEdit : null,
+              onSetContactEmail:
+                  selected.isOwner ? null : () => _setContactEmail(selected),
             ),
         ],
       ),
@@ -583,6 +741,8 @@ class _EmployeeDetailsDrawer extends StatelessWidget {
   final VoidCallback onUpdateLicense;
   final VoidCallback onUploadPhoto;
   final VoidCallback? onEditProfile;
+  final VoidCallback? onEditPharmacyProfile;
+  final VoidCallback? onSetContactEmail;
   final String? photoUrl;
 
   const _EmployeeDetailsDrawer({
@@ -597,6 +757,8 @@ class _EmployeeDetailsDrawer extends StatelessWidget {
     required this.onUpdateLicense,
     required this.onUploadPhoto,
     this.onEditProfile,
+    this.onEditPharmacyProfile,
+    this.onSetContactEmail,
   });
 
   @override
@@ -609,81 +771,6 @@ class _EmployeeDetailsDrawer extends StatelessWidget {
         tone: employee.isActive ? BadgeTone.success : BadgeTone.danger,
       ),
       onClose: onClose,
-      actions: employee.isOwner
-          ? [
-              SizedBox(
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: busy ? null : onUpdateLicense,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E6B46),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Text(
-                    'Update my license',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ]
-          : [
-              SizedBox(
-                height: 44,
-                child: OutlinedButton(
-                  onPressed: busy ? null : onResetPassword,
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    side: const BorderSide(
-                      color: Color(0xFFD8E8DE),
-                      width: 1.2,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Text(
-                    'Reset password',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1A2E22),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: busy ? null : onToggleActive,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: employee.isActive
-                        ? AppColors.danger
-                        : const Color(0xFF2E6B46),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Text(
-                    employee.isActive ? 'Deactivate' : 'Reactivate',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -713,7 +800,7 @@ class _EmployeeDetailsDrawer extends StatelessWidget {
                 onPressed: busy ? null : onEditProfile,
                 icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.white),
                 label: Text(
-                  'Edit profile',
+                  'Edit name',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -732,30 +819,146 @@ class _EmployeeDetailsDrawer extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
           ],
-          _DetailRow('Username', employee.username != null ? '@${employee.username}' : '—'),
-          _DetailRow('Role', employee.roleLabel),
-          _DetailRow('PRC license no.', employee.prcLicenseNo ?? 'None'),
-          _DetailRow(
-            'PRC expiry',
-            employee.prcLicenseExpiry != null
-                ? formatEmployeeDate(employee.prcLicenseExpiry!)
-                : '—',
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              const SizedBox(
-                width: 120,
-                child: Text('License status',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-              ),
-              licenseBadge,
-            ],
-          ),
           if (!employee.isOwner) ...[
-            const SizedBox(height: AppSpacing.xl),
-            const Divider(),
-            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: OutlinedButton(
+                      onPressed: busy ? null : onResetPassword,
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(
+                          color: Color(0xFFD8E8DE),
+                          width: 1.2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        'Reset password',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1A2E22),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: ElevatedButton(
+                      onPressed: busy ? null : onToggleActive,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: employee.isActive
+                            ? AppColors.danger
+                            : const Color(0xFF2E6B46),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        employee.isActive ? 'Deactivate' : 'Reactivate',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+          if (employee.isOwner) ...[
+            if (onEditPharmacyProfile != null) ...[
+              SizedBox(
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: busy ? null : onEditPharmacyProfile,
+                  icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.white),
+                  label: Text(
+                    'Edit profile',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E6B46),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            SizedBox(
+              height: 44,
+              child: ElevatedButton(
+                onPressed: busy ? null : onUpdateLicense,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E6B46),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  'Update my license',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+          if (!employee.isOwner) ...[
+            if (onSetContactEmail != null) ...[
+              SizedBox(
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : onSetContactEmail,
+                  icon: const Icon(Icons.mail_outline, size: 18, color: Color(0xFF1A2E22)),
+                  label: Text(
+                    'Set Gmail for password reset',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1A2E22),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(
+                      color: Color(0xFFD8E8DE),
+                      width: 1.2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
             SizedBox(
               height: 44,
               child: OutlinedButton.icon(
@@ -809,7 +1012,28 @@ class _EmployeeDetailsDrawer extends StatelessWidget {
                 ),
               ),
             ],
+            const SizedBox(height: AppSpacing.lg),
           ],
+          _DetailRow('Username', employee.username != null ? '@${employee.username}' : '—'),
+          _DetailRow('Role', employee.roleLabel),
+          _DetailRow('PRC license no.', employee.prcLicenseNo ?? 'None'),
+          _DetailRow(
+            'PRC expiry',
+            employee.prcLicenseExpiry != null
+                ? formatEmployeeDate(employee.prcLicenseExpiry!)
+                : '—',
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              const SizedBox(
+                width: 120,
+                child: Text('License status',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+              ),
+              licenseBadge,
+            ],
+          ),
         ],
       ),
     );

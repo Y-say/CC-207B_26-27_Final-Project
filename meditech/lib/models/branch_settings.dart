@@ -11,9 +11,6 @@ class BranchSettings {
   final double? longitude;
   final String fdaLto;
   final DateTime? fdaLtoExpiry;
-  final String? ownerPrcLicense;
-  final DateTime? ownerPrcExpiry;
-  final bool isOwnerPharmacist;
   final String? storefrontPath;
 
   const BranchSettings({
@@ -28,9 +25,6 @@ class BranchSettings {
     this.longitude,
     required this.fdaLto,
     this.fdaLtoExpiry,
-    this.ownerPrcLicense,
-    this.ownerPrcExpiry,
-    this.isOwnerPharmacist = false,
     this.storefrontPath,
   });
 
@@ -49,12 +43,6 @@ class BranchSettings {
       fdaLtoExpiry: json['fda_lto_expiry'] != null
           ? DateTime.tryParse(json['fda_lto_expiry'].toString())
           : null,
-      ownerPrcLicense: json['owner_prc_license']?.toString(),
-      ownerPrcExpiry: json['owner_prc_expiry'] != null
-          ? DateTime.tryParse(json['owner_prc_expiry'].toString())
-          : null,
-      isOwnerPharmacist: json['is_owner_pharmacist'] == true ||
-          (json['owner_prc_license']?.toString().isNotEmpty ?? false),
       storefrontPath: json['storefront_path']?.toString(),
     );
   }
@@ -72,9 +60,6 @@ class BranchSettings {
       'longitude': longitude,
       'fda_lto': fdaLto,
       'fda_lto_expiry': fdaLtoExpiry?.toIso8601String(),
-      'owner_prc_license': ownerPrcLicense,
-      'owner_prc_expiry': ownerPrcExpiry?.toIso8601String(),
-      'is_owner_pharmacist': isOwnerPharmacist,
     };
   }
 
@@ -89,9 +74,6 @@ class BranchSettings {
     double? longitude,
     String? fdaLto,
     DateTime? fdaLtoExpiry,
-    String? ownerPrcLicense,
-    DateTime? ownerPrcExpiry,
-    bool? isOwnerPharmacist,
   }) {
     return BranchSettings(
       branchId: branchId,
@@ -105,9 +87,6 @@ class BranchSettings {
       longitude: longitude ?? this.longitude,
       fdaLto: fdaLto ?? this.fdaLto,
       fdaLtoExpiry: fdaLtoExpiry ?? this.fdaLtoExpiry,
-      ownerPrcLicense: ownerPrcLicense ?? this.ownerPrcLicense,
-      ownerPrcExpiry: ownerPrcExpiry ?? this.ownerPrcExpiry,
-      isOwnerPharmacist: isOwnerPharmacist ?? this.isOwnerPharmacist,
     );
   }
 }

@@ -93,20 +93,6 @@ class BranchSettingsService {
         .eq('branch_id', branchId)
         .order('weekday');
 
-    final userId = _client.auth.currentUser?.id;
-    Map<String, dynamic>? staffRow;
-    if (userId != null) {
-      staffRow = await _client
-          .from('staff_members')
-          .select('prc_license_no, prc_license_expiry, role')
-          .eq('account_id', userId)
-          .maybeSingle();
-    }
-
-    final role = staffRow?['role'] as String? ?? '';
-    final prcNo = staffRow?['prc_license_no'] as String?;
-    final prcExpiryRaw = staffRow?['prc_license_expiry'];
-
     String? storefrontPath;
     try {
       final docRow = await _client
@@ -134,12 +120,6 @@ class BranchSettingsService {
       fdaLtoExpiry: response['lto_expiry'] != null
           ? DateTime.tryParse(response['lto_expiry'].toString())
           : null,
-      ownerPrcLicense: prcNo,
-      ownerPrcExpiry: prcExpiryRaw != null
-          ? DateTime.tryParse(prcExpiryRaw.toString())
-          : null,
-      isOwnerPharmacist:
-          role == 'pharmacist' || (prcNo != null && prcNo.isNotEmpty),
       storefrontPath: storefrontPath,
     );
   }
@@ -152,31 +132,17 @@ class BranchSettingsService {
     required String operatingHours,
     double? latitude,
     double? longitude,
-    String? ownerPrcLicense,
-    DateTime? ownerPrcExpiry,
     bool updateBranchDetails = true,
   }) async {
-    if (updateBranchDetails) {
-      await _client.from('branches').update({
-        'address': address,
-        'contact_number': contactNumber,
-        ...?latitude != null ? {'latitude': latitude} : null,
-        ...?longitude != null ? {'longitude': longitude} : null,
-      }).eq('id', branchId);
-    }
+    if (!updateBranchDetails) return;
+
+    await _client.from('branches').update({
+      'address': address,
+      'contact_number': contactNumber,
+      ...?latitude != null ? {'latitude': latitude} : null,
+      ...?longitude != null ? {'longitude': longitude} : null,
+    }).eq('id', branchId);
 
     // Operating hours text is display-only for now (hours live in branch_hours).
-
-    if (ownerPrcLicense != null && ownerPrcLicense.isNotEmpty) {
-      final user = _client.auth.currentUser;
-      if (user != null) {
-        await _client.from('staff_members').update({
-          'prc_license_no': ownerPrcLicense,
-          if (ownerPrcExpiry != null)
-            'prc_license_expiry':
-                ownerPrcExpiry.toIso8601String().substring(0, 10),
-        }).eq('account_id', user.id);
-      }
-    }
   }
 }

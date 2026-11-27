@@ -91,6 +91,41 @@ function undeliverableRecipientError(email: string): string | null {
   return null;
 }
 
+const STAFF_INTERNAL_EMAIL_SUFFIX = "@staff.meditech.internal";
+
+function isStaffContactEmail(email: string): boolean {
+  const lower = email.trim().toLowerCase();
+  if (!lower.includes("@")) return false;
+  if (lower.endsWith(STAFF_INTERNAL_EMAIL_SUFFIX)) return false;
+  if (undeliverableRecipientError(email)) return false;
+  return true;
+}
+
+// Pharmacy staff reset when a real Gmail (or contact email) is on file in Auth.
+function staffInbox(
+  identifier: string,
+  account: FoundAccount | undefined,
+): string | null {
+  if (!account || account.account_type !== "staff") return null;
+  const onFile = String(account.email ?? "").trim().toLowerCase();
+  if (!isStaffContactEmail(onFile)) return null;
+
+  const id = identifier.trim();
+  if (id.includes("@")) {
+    if (id.trim().toLowerCase() !== onFile) return null;
+    return onFile;
+  }
+  // Matched by username via find_account_for_sign_in
+  return onFile;
+}
+
+function recoveryInbox(
+  identifier: string,
+  account: FoundAccount | undefined,
+): string | null {
+  return customerInbox(identifier, account) ?? staffInbox(identifier, account);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply(405, { error: "Use POST." });
@@ -106,13 +141,13 @@ Deno.serve(async (req) => {
   });
   if (lookupError) return reply(500, { error: "Could not send the code. Try again." });
   const account = firstRpcRow<FoundAccount>(found);
-  const recipient = customerInbox(identifier, account);
+  const recipient = recoveryInbox(identifier, account);
 
   // Always say a code was sent, so nobody can search for accounts.
   if (action === "send") {
-    if (account && account.account_type !== "customer") {
+    if (account?.account_type === "admin") {
       return reply(400, {
-        error: "Forgot password is only for customer accounts. Pharmacy and admin accounts must reset through their own sign-in flow.",
+        error: "Admin accounts must reset through the admin portal.",
       });
     }
 
@@ -120,6 +155,13 @@ Deno.serve(async (req) => {
       return reply(400, {
         error: "Use the same email you used when you signed up as a customer in MediTech.",
       });
+    }
+
+    if (account?.account_type === "staff" && !recipient) {
+      const hint = identifier.includes("@")
+        ? "Use the Gmail saved on your pharmacy profile (Profile → Edit profile)."
+        : "This account has no contact email yet. Add Gmail under Profile → Edit profile while signed in, or ask your owner to set it on Employees.";
+      return reply(400, { error: hint });
     }
 
     let deliveryEmail: string | null = null;

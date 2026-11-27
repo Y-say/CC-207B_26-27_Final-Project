@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../utils/app_failure.dart';
 
 /// Columns that have existed since staff accounts were introduced.
 const _staffCoreColumns = '''
@@ -65,13 +69,16 @@ Future<void> updateMyStaffProfile(
   required String firstName,
   String? middleName,
   required String lastName,
+  String? username,
 }) async {
   final middle = middleName?.trim();
+  final user = username?.trim();
   try {
     await client.rpc('update_my_staff_profile', params: {
       'p_first_name': firstName.trim(),
       'p_middle_name': middle == null || middle.isEmpty ? '' : middle,
       'p_last_name': lastName.trim(),
+      if (user != null && user.isNotEmpty) 'p_username': user,
     });
     return;
   } on PostgrestException catch (error) {
@@ -91,4 +98,36 @@ Future<void> updateMyStaffProfile(
     'middle_name': middle == null || middle.isEmpty ? null : middle,
     'last_name': lastName.trim(),
   }).eq('account_id', uid);
+}
+
+/// Saves the signed-in staff member's contact email (Supabase Auth).
+Future<void> updateMyStaffContactEmail(
+  SupabaseClient client, {
+  required String email,
+}) async {
+  try {
+    final response = await client.functions.invoke(
+      'staff-accounts',
+      body: {
+        'action': 'update_my_email',
+        'email': email.trim(),
+      },
+    );
+    final data = response.data;
+    if (data is Map && data['error'] != null) {
+      throw AppFailure(data['error'].toString());
+    }
+  } on FunctionException catch (error) {
+    final details = error.details;
+    if (details is Map) {
+      final rawFields = details['fields'];
+      if (rawFields is Map && rawFields['email'] != null) {
+        throw AppFailure(rawFields['email'].toString());
+      }
+    }
+    throw AppFailure.fromEdge(error);
+  } on SocketException {
+    throw const AppFailure('Could not reach Supabase.');
+  }
+  await client.auth.refreshSession();
 }

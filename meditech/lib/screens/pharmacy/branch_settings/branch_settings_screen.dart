@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../models/branch_settings.dart';
 import '../../../providers/branch_settings_providers.dart';
-import '../../../providers/pharmacy_staff_providers.dart';
 import '../../../providers/session_providers.dart';
 import '../../../utils/app_failure.dart';
 import '../../../utils/pick_profile_image.dart';
@@ -15,8 +14,7 @@ import '../../../widgets/theme/app_colors.dart';
 import '../../../widgets/theme/app_spacing.dart';
 
 // Branch Settings screen (Ph-36)
-// Allows the Pharmacy Owner to view/edit branch details and owner PRC license.
-// Other staff have read-only access.
+// Branch-level details and FDA LTO (read-only). PRC licenses live under Profile.
 class BranchSettingsScreen extends ConsumerStatefulWidget {
   const BranchSettingsScreen({super.key});
 
@@ -29,9 +27,7 @@ class _BranchSettingsScreenState extends ConsumerState<BranchSettingsScreen> {
   final _addressController = TextEditingController();
   final _contactController = TextEditingController();
   final _hoursController = TextEditingController();
-  final _prcNumberController = TextEditingController();
 
-  DateTime? _prcExpiry;
   bool _isSaving = false;
   bool _storefrontUploading = false;
   bool _initialized = false;
@@ -41,7 +37,6 @@ class _BranchSettingsScreenState extends ConsumerState<BranchSettingsScreen> {
     _addressController.dispose();
     _contactController.dispose();
     _hoursController.dispose();
-    _prcNumberController.dispose();
     super.dispose();
   }
 
@@ -50,8 +45,6 @@ class _BranchSettingsScreenState extends ConsumerState<BranchSettingsScreen> {
     _addressController.text = settings.address;
     _contactController.text = settings.contactNumber;
     _hoursController.text = settings.operatingHours;
-    _prcNumberController.text = settings.ownerPrcLicense ?? '';
-    _prcExpiry = settings.ownerPrcExpiry;
     _initialized = true;
   }
 
@@ -105,13 +98,10 @@ class _BranchSettingsScreenState extends ConsumerState<BranchSettingsScreen> {
         address: _addressController.text.trim(),
         contactNumber: _contactController.text.trim(),
         operatingHours: _hoursController.text.trim(),
-        ownerPrcLicense: _prcNumberController.text.trim(),
-        ownerPrcExpiry: _prcExpiry,
         updateBranchDetails: isOwner,
       );
 
       ref.invalidate(branchSettingsProvider);
-      ref.invalidate(pharmacyStaffProfileProvider);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -127,10 +117,16 @@ class _BranchSettingsScreenState extends ConsumerState<BranchSettingsScreen> {
     }
   }
 
-  String _formatDateSlash(DateTime dt) {
-    final m = dt.month.toString().padLeft(2, '0');
-    final d = dt.day.toString().padLeft(2, '0');
-    return '$m/$d/${dt.year}';
+  String _ltoSummary(BranchSettings settings) {
+    final lto = settings.fdaLto;
+    final expiry = settings.fdaLtoExpiry;
+    final verified = 'verified by the Administrator';
+    if (expiry == null) return 'FDA License to Operate: $lto · $verified';
+    final expiryLabel =
+        '${expiry.month.toString().padLeft(2, '0')}/'
+        '${expiry.day.toString().padLeft(2, '0')}/'
+        '${expiry.year}';
+    return 'FDA License to Operate: $lto · expires $expiryLabel · $verified';
   }
 
   @override
@@ -139,10 +135,7 @@ class _BranchSettingsScreenState extends ConsumerState<BranchSettingsScreen> {
     final account = ref.watch(sessionProvider);
     final isOwner = account?.role == 'owner';
     final isPharmacist = account?.role == 'pharmacist';
-    final canEditPrc =
-        isOwner || isPharmacist || account?.role == 'staff';
     final canChangePharmacyPicture = isOwner || isPharmacist;
-    final showSave = isOwner || canEditPrc;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -265,115 +258,15 @@ class _BranchSettingsScreenState extends ConsumerState<BranchSettingsScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // FDA LTO Note
+                        // FDA LTO (branch permit — not individual PRC)
                         Text(
-                          'FDA License to Operate: ${settings.fdaLto} · verified by the Administrator',
+                          _ltoSummary(settings),
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             color: const Color(0xFF6B7280),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Your PRC license Card (matching wireframe layout with Save changes inside)
-                    PharmacySettingsSectionCard(
-                      title:
-                          'Your PRC license (only if you are also a licensed pharmacist)',
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildEditableField(
-                                label: 'PRC license number',
-                                controller: _prcNumberController,
-                                enabled: canEditPrc,
-                                hintText: '7 digits',
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'License expiry',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w700,
-                                      fontStyle: FontStyle.normal,
-                                      color: const Color(0xFF1A2E22),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  InkWell(
-                                    borderRadius: BorderRadius.circular(10),
-                                    onTap: !canEditPrc
-                                        ? null
-                                        : () async {
-                                            final now = DateTime.now();
-                                            final picked = await showDatePicker(
-                                              context: context,
-                                              initialDate: _prcExpiry ?? now,
-                                              firstDate: now,
-                                              lastDate: now.add(
-                                                const Duration(days: 365 * 10),
-                                              ),
-                                            );
-                                            if (picked != null) {
-                                              setState(
-                                                () => _prcExpiry = picked,
-                                              );
-                                            }
-                                          },
-                                    child: Container(
-                                      height: 52,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: const Color(0xFFD8E8DE),
-                                          width: 1.2,
-                                        ),
-                                      ),
-                                      alignment: Alignment.centerLeft,
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              _prcExpiry != null
-                                                  ? _formatDateSlash(
-                                                      _prcExpiry!,
-                                                    )
-                                                  : 'mm/dd/yyyy',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14.5,
-                                                color: _prcExpiry != null
-                                                    ? const Color(0xFF1A2E22)
-                                                    : const Color(0xFF9CA3AF),
-                                              ),
-                                            ),
-                                          ),
-                                          const Icon(
-                                            Icons.calendar_today_outlined,
-                                            size: 18,
-                                            color: Color(0xFF4B5563),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (showSave) ...[
+                        if (isOwner) ...[
                           const SizedBox(height: 18),
                           Align(
                             alignment: Alignment.centerLeft,

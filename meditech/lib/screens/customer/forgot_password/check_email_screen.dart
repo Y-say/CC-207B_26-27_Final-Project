@@ -6,10 +6,18 @@ import '../../../widgets/theme/app_spacing.dart';
 
 // Shown after reset instructions are sent
 class CheckEmailScreen extends StatelessWidget {
-  const CheckEmailScreen({super.key, this.identifier, this.deliveryEmail});
+  const CheckEmailScreen({
+    super.key,
+    this.identifier,
+    this.deliveryEmail,
+    this.signInPath = '/sign-in',
+    this.resetPath = '/forgot-password/reset',
+  });
 
   final String? identifier;
   final String? deliveryEmail;
+  final String signInPath;
+  final String resetPath;
 
   @override
   Widget build(BuildContext context) {
@@ -42,14 +50,17 @@ class CheckEmailScreen extends StatelessWidget {
               const Spacer(),
               FilledButton(
                 onPressed: () => context.push(
-                  '/forgot-password/reset',
-                  extra: identifier,
+                  resetPath,
+                  extra: {
+                    'identifier': identifier,
+                    'signInPath': signInPath,
+                  },
                 ),
                 child: const Text('Enter the code'),
               ),
               const SizedBox(height: AppSpacing.md),
               TextButton(
-                onPressed: () => context.go('/sign-in'),
+                onPressed: () => context.go(signInPath),
                 child: const Text('Back to login'),
               ),
             ],

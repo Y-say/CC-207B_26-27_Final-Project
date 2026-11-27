@@ -187,6 +187,16 @@ class _PharmacySignInScreenState extends ConsumerState<PharmacySignInScreen> {
                                     : const Text('Sign in'),
                               ),
                               const SizedBox(height: AppSpacing.sm),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: _busy
+                                      ? null
+                                      : () => context.push('/forgot-password'),
+                                  child: const Text('Forgot password?'),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
                               const Text(
                                 'Sessions sign out after 10 minutes of inactivity.',
                                 textAlign: TextAlign.center,
