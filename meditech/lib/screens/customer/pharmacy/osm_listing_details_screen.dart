@@ -46,7 +46,7 @@ class OsmListingDetailsScreen extends ConsumerWidget {
         title: const CustomerLocationAppBarTitle(
           heading: 'Pharmacy details',
           icon: Icons.local_pharmacy_outlined,
-          headingStyle: const TextStyle(
+          headingStyle: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
             color: AppColors.text,
