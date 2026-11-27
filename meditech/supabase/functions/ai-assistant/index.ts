@@ -1,5 +1,5 @@
 // Answer from MediTech facts only, using the free Gemini API
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   appGuide,
   appHelpAnswer,
@@ -7,10 +7,13 @@ import {
   isAppHelp,
   isMedicineLookup,
   medicineNotListedAnswer,
-  recommendPharmacyAnswer,
   refuseReason,
-  type AiFacts,
+  type MedicineFact,
+  type OfferFact,
 } from "./guard.ts";
+import { loadFacts, type ClientLocation } from "./facts.ts";
+import { needsLiveMeditechData, tryDeterministicAnswer } from "./handlers.ts";
+import { polishAssistantReply } from "./currency.ts";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -29,9 +32,56 @@ function reply(status: number, body: unknown) {
   });
 }
 
-function money(value: unknown) {
-  return Number(value).toFixed(2);
+type HistoryLine = { role: "user" | "model"; text: string };
+
+function parseLocation(raw: unknown): ClientLocation {
+  if (!raw || typeof raw !== "object") return {};
+  const record = raw as Record<string, unknown>;
+  return {
+    status: typeof record.status === "string" ? record.status : undefined,
+    latitude: typeof record.latitude === "number" ? record.latitude : undefined,
+    longitude: typeof record.longitude === "number" ? record.longitude : undefined,
+    label: typeof record.label === "string" ? record.label : undefined,
+    weekday: typeof record.weekday === "number" ? record.weekday : undefined,
+    minutes_since_midnight: typeof record.minutes_since_midnight === "number"
+      ? record.minutes_since_midnight
+      : undefined,
+  };
 }
+
+function parseHistory(raw: unknown): HistoryLine[] {
+  if (!Array.isArray(raw)) return [];
+  const lines: HistoryLine[] = [];
+  for (const entry of raw.slice(-8)) {
+    if (!entry || typeof entry !== "object") continue;
+    const record = entry as Record<string, unknown>;
+    const text = String(record.text ?? "").trim();
+    if (!text) continue;
+    const role = record.role === "model" ? "model" : "user";
+    lines.push({ role, text });
+  }
+  return lines;
+}
+
+const systemPrompt = [
+  "You are Medipal, the MediTech customer assistant.",
+  "Follow the behaviors in facts.medipal_rules and facts.app_guide.",
+  "Use location, nearby_pharmacies, offers, and reservations from facts only.",
+  "If location.status is granted, do not say location is turned off.",
+  "If location is not granted, explain how to enable it using facts.location.help_enable_location.",
+  "Understand follow-up questions using conversation history.",
+  "Ask for clarification when the question is ambiguous.",
+  "For multiple active reservations, ask which reference unless the user was specific.",
+  "Never invent prices, stock, reservation status, reference numbers, or pickup codes.",
+  "Do not diagnose, prescribe, or recommend medical substitutes — only pharmacies listing the same medicine.",
+  "You may share brief general education about a medicine's common use or dosage form, and direct users to a pharmacist for medical advice.",
+  "If data is missing or an error occurred, say so clearly.",
+  "Write in a professional, courteous tone for pharmacy customers.",
+  "Use plain text only: no markdown, no asterisks, no bold, no hashtags.",
+  "Use short paragraphs or hyphen bullets (- item) when listing.",
+  "Keep answers concise and non-technical.",
+  "All money is Philippine peso (PHP). Always prefix prices with ₱ (e.g. ₱12.50). Never use $ or USD.",
+].join(" ");
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -46,7 +96,7 @@ Deno.serve(async (req) => {
   if (message.length > 500) return reply(400, { error: "Ask a shorter question." });
 
   const refusal = refuseReason(message);
-  if (refusal) return reply(200, { answer: refusal });
+  if (refusal) return reply(200, { answer: polishAssistantReply(refusal) });
 
   if (!geminiKey?.trim()) {
     console.error("[ai-assistant] GEMINI_API_KEY is not set");
@@ -68,7 +118,6 @@ Deno.serve(async (req) => {
   const userId = userData.user.id;
   const { data: account } = await server.from("accounts").select("account_type").eq("id", userId).maybeSingle();
   if (account?.account_type !== "customer") {
-    console.error("[ai-assistant] account_type check failed:", account?.account_type);
     return reply(403, { error: "This assistant is for customers." });
   }
 
@@ -81,35 +130,25 @@ Deno.serve(async (req) => {
   }
   if (allowed !== true) return reply(429, { error: "You have reached today's limit of 20 questions." });
 
-  // App how-to, steps, and MediTech-only tips
-  if (isAppHelp(message)) {
-    return reply(200, { answer: appHelpAnswer(message) });
+  const location = parseLocation(body.location);
+  const history = parseHistory(body.history);
+
+  if (isAppHelp(message) && !needsLiveMeditechData(message)) {
+    return reply(200, { answer: polishAssistantReply(appHelpAnswer(message)) });
   }
 
-  const facts = await loadFacts(server, userId, message);
+  const facts = await loadFacts(server, userId, message, location);
 
-  // No matching medicine in MediTech: say so clearly, without inventing one
-  if (
-    isMedicineLookup(message) &&
-    facts.forModel.medicines.length === 0
-  ) {
-    return reply(200, { answer: medicineNotListedAnswer() });
+  const medicines = facts.forModel.medicines as MedicineFact[];
+  const offers = facts.forModel.offers as OfferFact[];
+
+  if (isMedicineLookup(message) && medicines.length === 0) {
+    return reply(200, { answer: polishAssistantReply(medicineNotListedAnswer()) });
   }
 
-  if (/recommend/i.test(message)) {
-    const fromOffers = recommendPharmacyAnswer(
-      facts.forModel.medicines,
-      facts.forModel.offers,
-    );
-    if (fromOffers) return reply(200, { answer: fromOffers });
-    if (facts.forModel.medicines.length > 0) {
-      const med = facts.forModel.medicines[0];
-      return reply(200, {
-        answer:
-          `${med.brand_name} is in the MediTech catalogue, but no partner pharmacy is showing stock in offers right now. ` +
-          "Try Search, pick another branch on the map, or check again later.",
-      });
-    }
+  const deterministic = tryDeterministicAnswer(message, facts, location, medicines, offers);
+  if (deterministic) {
+    return reply(200, { answer: polishAssistantReply(deterministic) });
   }
 
   const models = (Deno.env.get("GEMINI_MODELS") ??
@@ -117,10 +156,20 @@ Deno.serve(async (req) => {
     .split(",")
     .map((name) => name.trim())
     .filter((name) => name.length > 0);
+
+  const contents = [
+    ...history.map((line) => ({
+      role: line.role,
+      parts: [{ text: line.text }],
+    })),
+    { role: "user", parts: [{ text: message }] },
+  ];
+
   let answer = "";
   let geminiOk = false;
   let lastGeminiStatus = 0;
   let lastGeminiBody = "";
+
   for (const model of models) {
     const gemini = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -130,24 +179,11 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           systemInstruction: {
             parts: [{
-              text: [
-                "You are Medipal, the MediTech customer assistant.",
-                "Stay inside the MediTech customer app only.",
-                "You may explain what MediTech is, step-by-step how to search, compare offers, use the cart, upload a prescription, place a reservation, track My Reservations, and use a pickup code.",
-                "You may recommend pharmacies or next app steps using only the offers and app_guide in the facts.",
-                "Prefer Available over Low Stock. Never recommend Unavailable or Unconfirmed items.",
-                "If medicines is empty for a medicine question, say it is not available on MediTech yet and suggest Search.",
-                "If a live fact is missing, say you do not have it in MediTech.",
-                "Do not give diagnosis, dosing, pregnancy, or treatment advice.",
-                "Do not invent a price, availability, reservation status, reference number, or pickup code.",
-                "Keep answers short, friendly, and focused on the app.",
-                "Facts:",
-                JSON.stringify(facts.forModel),
-              ].join(" "),
+              text: `${systemPrompt} Facts: ${JSON.stringify(facts.forModel)}`,
             }],
           },
-          contents: [{ role: "user", parts: [{ text: message }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 500 },
+          contents,
+          generationConfig: { temperature: 0.2, maxOutputTokens: 600 },
         }),
       },
     );
@@ -167,118 +203,18 @@ Deno.serve(async (req) => {
   }
 
   if (!geminiOk) {
-    console.error("[ai-assistant] All Gemini models failed");
-    const keyRejected =
-      lastGeminiStatus === 400 ||
-      lastGeminiStatus === 403 ||
-      /API_KEY|api key|PERMISSION_DENIED/i.test(lastGeminiBody);
-    const modelGone =
-      lastGeminiStatus === 404 ||
-      /no longer available|not found for API version/i.test(lastGeminiBody);
-    const recommendFallback = /recommend/i.test(message)
-      ? recommendPharmacyAnswer(facts.forModel.medicines, facts.forModel.offers)
-      : null;
-    if (recommendFallback) {
-      return reply(200, { answer: recommendFallback });
-    }
     return reply(503, {
-      error: keyRejected
-        ? "The Gemini API key was rejected. Update GEMINI_API_KEY in Supabase Edge Function secrets (use a Google AI Studio key)."
-        : modelGone
-        ? "The assistant AI model list is outdated. Redeploy ai-assistant or set GEMINI_MODELS in function secrets."
-        : "The assistant is unavailable. Try again in a moment.",
-      code: keyRejected ? "invalid_gemini_key" : "gemini_unavailable",
+      error: "The assistant could not reach the AI service. Try again in a moment.",
+      code: "gemini_unavailable",
     });
   }
+
   if (hasInventedFact(answer, facts.check)) {
     return reply(200, {
-      answer: "I can only tell you what is saved in MediTech. Please ask again with a medicine or reservation.",
+      answer: polishAssistantReply(
+        "I can only share information recorded in MediTech. Please ask again with a medicine name or reservation reference.",
+      ),
     });
   }
-  return reply(200, { answer });
+  return reply(200, { answer: polishAssistantReply(answer) });
 });
-
-// Read medicines, offers, and this customer's reservations. Nothing is written.
-async function loadFacts(server: SupabaseClient, userId: string, message: string) {
-  const words = message
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((word) => word.length > 3 && !["where", "find", "medicine", "pharmacy", "price", "with", "your", "have", "does"].includes(word))
-    .slice(0, 3);
-
-  let medicines: { id: string; brand_name: string; generic_name: string; strength: string }[] = [];
-  if (words.length > 0) {
-    const filter = words
-      .map((word) => `brand_name.ilike.%${word}%,generic_name.ilike.%${word}%`)
-      .join(",");
-    const { data } = await server
-      .from("medicines")
-      .select("id, brand_name, generic_name, strength")
-      .eq("status", "active")
-      .or(filter)
-      .limit(5);
-    medicines = data ?? [];
-  }
-
-  const medicineIds = medicines.map((medicine) => medicine.id);
-  const { data: offers } = medicineIds.length === 0
-    ? { data: [] }
-    : await server
-      .from("public_availability")
-      .select("medicine_id, branch_id, price_per_unit, availability")
-      .in("medicine_id", medicineIds)
-      .limit(10);
-
-  const branchIds = [...new Set((offers ?? []).map((offer) => offer.branch_id))];
-  const { data: branches } = branchIds.length === 0
-    ? { data: [] }
-    : await server.from("branches").select("id, pharmacy_name, branch_name").in("id", branchIds);
-
-  const branchName = new Map((branches ?? []).map((branch) => [branch.id, `${branch.pharmacy_name} ${branch.branch_name}`]));
-  const offerFacts = (offers ?? []).map((offer) => ({
-    pharmacy: branchName.get(offer.branch_id) ?? "Pharmacy",
-    price: money(offer.price_per_unit),
-    availability: offer.availability,
-  }));
-
-  let reservations: { reference_no: string; status: string; total: string; pickup_code: string | null }[] = [];
-  if (/reserv|pickup|reference/i.test(message)) {
-    const { data: rows } = await server
-      .from("reservations")
-      .select("id, reference_no, status, total_amount")
-      .eq("customer_id", userId)
-      .order("submitted_at", { ascending: false })
-      .limit(5);
-    const ids = (rows ?? []).map((row) => row.id);
-    const { data: codes } = ids.length === 0
-      ? { data: [] }
-      : await server.from("pickup_codes").select("reservation_id, code_suffix").in("reservation_id", ids);
-    const codeByReservation = new Map((codes ?? []).map((code) => [code.reservation_id, code.code_suffix]));
-    reservations = (rows ?? []).map((row) => ({
-      reference_no: row.reference_no,
-      status: row.status,
-      total: money(row.total_amount),
-      pickup_code: codeByReservation.get(row.id) ?? null,
-    }));
-  }
-
-  const check: AiFacts = {
-    prices: [...offerFacts.map((offer) => offer.price), ...reservations.map((row) => row.total)],
-    referenceNumbers: reservations.map((row) => row.reference_no),
-    pickupCodes: reservations.map((row) => row.pickup_code).filter((code): code is string => code != null),
-  };
-
-  return {
-    check,
-    forModel: {
-      app_guide: appGuide,
-      medicines: medicines.map((medicine) => ({
-        brand_name: medicine.brand_name,
-        generic_name: medicine.generic_name,
-        strength: medicine.strength,
-      })),
-      offers: offerFacts,
-      reservations,
-    },
-  };
-}

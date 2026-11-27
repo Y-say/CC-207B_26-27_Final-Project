@@ -7,6 +7,7 @@ import {
   medicineNotListedAnswer,
   recommendPharmacyAnswer,
   refuseReason,
+  wantsLiveReservationData,
 } from "./guard.ts";
 
 Deno.test("refuses dosing", () => {
@@ -48,6 +49,13 @@ Deno.test("detects app help", () => {
   assertEquals(isAppHelp("How do I place a reservation?"), true);
 });
 
+Deno.test("status question is not generic app help", () => {
+  const q = "What is the status of my reservation?";
+  assertEquals(wantsLiveReservationData(q), true);
+  assertEquals(isAppHelp(q), false);
+  assertEquals(appHelpAnswer(q).includes("Here's how reservations work"), false);
+});
+
 Deno.test("app help returns MediTech steps", () => {
   const answer = appHelpAnswer("How do I place a reservation?");
   assertEquals(answer.includes("My Reservations"), true);
@@ -56,7 +64,7 @@ Deno.test("app help returns MediTech steps", () => {
 
 Deno.test("has a clear not-listed answer", () => {
   assertEquals(
-    medicineNotListedAnswer().includes("not available on MediTech"),
+    medicineNotListedAnswer().includes("not listed on MediTech"),
     true,
   );
 });
@@ -73,10 +81,10 @@ Deno.test("recommend from live offers", () => {
   assertEquals(answer?.includes("Biogesic"), true);
 });
 
-Deno.test("blocks a made-up price", () => {
-  const invented = hasInventedFact("It costs 99.50.", {
+Deno.test("blocks a made-up reservation reference", () => {
+  const invented = hasInventedFact("Your reference is RM-010126-9999.", {
     prices: ["12.00"],
-    referenceNumbers: [],
+    referenceNumbers: ["RM-010126-0001"],
     pickupCodes: [],
   });
   assertEquals(invented, true);
