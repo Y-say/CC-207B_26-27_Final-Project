@@ -578,23 +578,23 @@ class _ReservationDetailsDrawerState
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: SizedBox(
-                                  height: 42,
-                                  child: TextField(
-                                    controller: _codeController,
-                                    textCapitalization:
-                                        TextCapitalization.characters,
-                                    decoration: InputDecoration(
-                                      hintText: 'Enter 4-character code',
-                                      errorText: _codeError
-                                          ? 'This code doesn\'t match the reservation.'
-                                          : null,
-                                      contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 10,
-                                      ),
+                                child: TextField(
+                                  controller: _codeController,
+                                  textCapitalization:
+                                      TextCapitalization.characters,
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    hintText: 'Enter 4-character code',
+                                    errorText: _codeError
+                                        ? 'This code doesn\'t match the reservation.'
+                                        : null,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 11,
+                                    ),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
                                         borderSide: const BorderSide(
@@ -609,12 +609,11 @@ class _ReservationDetailsDrawerState
                                           width: 1.2,
                                         ),
                                       ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFF2E6B46),
-                                          width: 1.5,
-                                        ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF2E6B46),
+                                        width: 1.5,
                                       ),
                                     ),
                                   ),

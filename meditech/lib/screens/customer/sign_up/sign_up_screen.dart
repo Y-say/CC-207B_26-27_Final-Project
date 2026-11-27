@@ -1,6 +1,8 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../providers/session_providers.dart';
 import '../../../utils/app_failure.dart';
@@ -26,6 +28,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
+  late final TapGestureRecognizer _privacyTap;
   DateTime? _birthdate;
   var _agreed = false;
   var _busy = false;
@@ -40,6 +43,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   @override
   void initState() {
     super.initState();
+    _privacyTap = TapGestureRecognizer()
+      ..onTap = () => context.push('/privacy');
     for (final controller in [
       _firstName,
       _middleName,
@@ -67,6 +72,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
   @override
   void dispose() {
+    _privacyTap.dispose();
     for (final controller in [
       _firstName,
       _middleName,
@@ -454,209 +460,339 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     final birthdateLabel = _birthdate == null
         ? 'mm/dd/yyyy'
         : '${_birthdate!.month.toString().padLeft(2, '0')}/${_birthdate!.day.toString().padLeft(2, '0')}/${_birthdate!.year}';
+    final cardRadius = BorderRadius.circular(14);
+    final buttonShape = RoundedRectangleBorder(borderRadius: cardRadius);
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: 'Back',
-          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
-          icon: const Icon(Icons.arrow_back),
-        ),
-      ),
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           if (_offline) const OfflineBanner(),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              children: [
-                Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+            child: SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.xl,
+                      AppSpacing.md,
+                      AppSpacing.xl,
+                      AppSpacing.xl,
+                    ),
                     children: [
-                      Image.asset(
-                        'assets/images/Meditech Logo.png',
-                        width: 36,
-                        height: 36,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        'MediTech',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: InkWell(
+                          onTap: () => context.canPop()
+                              ? context.pop()
+                              : context.go('/'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.border,
+                                width: 1.2,
+                              ),
                             ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Create your account',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text(
-                  'Keep your prescriptions and medicine searches in one secure place.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 15),
-                ),
-                if (_formError != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    _formError!,
-                    style: const TextStyle(color: AppColors.danger, fontSize: 14),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.xl),
-                AppTextField(
-                  label: 'First name',
-                  controller: _firstName,
-                  hint: 'e.g. Juan',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppTextField(
-                  label: 'Middle name',
-                  controller: _middleName,
-                  hint: 'Optional',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppTextField(
-                  label: 'Last name',
-                  controller: _lastName,
-                  hint: 'e.g. Dela Cruz',
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppTextField(
-                  label: 'Mobile number',
-                  controller: _mobile,
-                  hint: '09XXXXXXXXX',
-                  keyboardType: TextInputType.phone,
-                  errorText: _mobileError,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppTextField(
-                  label: 'Email address',
-                  controller: _email,
-                  hint: 'you@example.com',
-                  keyboardType: TextInputType.emailAddress,
-                  errorText: _emailError,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Birthdate *',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 6),
-                OutlinedButton(
-                  onPressed: _pickBirthdate,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _birthdateError != null
-                        ? AppColors.danger
-                        : _birthdate == null
-                            ? AppColors.textMuted
-                            : AppColors.text,
-                    side: BorderSide(
-                      color: _birthdateError != null
-                          ? AppColors.danger
-                          : _birthdate == null
-                              ? AppColors.border
-                              : AppColors.primary,
-                    ),
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(birthdateLabel),
-                  ),
-                ),
-                if (_birthdateError != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    _birthdateError!,
-                    style: const TextStyle(
-                      color: AppColors.danger,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.md),
-                AppPasswordField(
-                  label: 'Password',
-                  controller: _password,
-                  errorText: _passwordError,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppPasswordField(
-                  label: 'Confirm password',
-                  controller: _confirmPassword,
-                  errorText: _confirmPasswordError,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CheckboxListTile(
-                  value: _agreed,
-                  onChanged: (value) => setState(() => _agreed = value ?? false),
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  title: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      const Text(
-                        'I agree to the ',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                      ),
-                      GestureDetector(
-                        onTap: () => context.push('/privacy'),
-                        child: const Text(
-                          'Privacy Notice',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
+                            child: const Icon(
+                              Icons.arrow_back,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
+                      const SizedBox(height: AppSpacing.md),
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Image.asset(
+                              'assets/images/Meditech Logo.png',
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.contain,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              'MediTech',
+                              style: GoogleFonts.inter(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'Create your account',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                          letterSpacing: -0.8,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
                       const Text(
-                        ' and the processing of my health data (Data Privacy Act of 2012).',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        'Keep your prescriptions and medicine searches in one secure place.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (_formError != null) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        Text(
+                          _formError!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.danger,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.lg),
+                      AppTextField(
+                        label: 'First name',
+                        controller: _firstName,
+                        hint: 'e.g. Juan',
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        label: 'Middle name',
+                        controller: _middleName,
+                        hint: 'Optional',
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        label: 'Last name',
+                        controller: _lastName,
+                        hint: 'e.g. Dela Cruz',
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        label: 'Mobile number',
+                        controller: _mobile,
+                        hint: '09XXXXXXXXX',
+                        keyboardType: TextInputType.phone,
+                        errorText: _mobileError,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        label: 'Email address',
+                        controller: _email,
+                        hint: 'you@example.com',
+                        keyboardType: TextInputType.emailAddress,
+                        errorText: _emailError,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      const Text(
+                        'Birthdate *',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.text,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      OutlinedButton(
+                        onPressed: _pickBirthdate,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(50),
+                          backgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          foregroundColor: _birthdateError != null
+                              ? AppColors.danger
+                              : _birthdate == null
+                                  ? AppColors.textMuted
+                                  : AppColors.text,
+                          side: BorderSide(
+                            color: _birthdateError != null
+                                ? AppColors.danger
+                                : _birthdate == null
+                                    ? AppColors.border
+                                    : AppColors.primary,
+                          ),
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            birthdateLabel,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_birthdateError != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          _birthdateError!,
+                          style: const TextStyle(
+                            color: AppColors.danger,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.md),
+                      AppPasswordField(
+                        label: 'Password',
+                        controller: _password,
+                        errorText: _passwordError,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppPasswordField(
+                        label: 'Confirm password',
+                        controller: _confirmPassword,
+                        errorText: _confirmPasswordError,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      InkWell(
+                        onTap: () => setState(() => _agreed = !_agreed),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: _agreed,
+                                  onChanged: (value) =>
+                                      setState(() => _agreed = value ?? false),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text.rich(
+                                  TextSpan(
+                                    style: const TextStyle(
+                                      color: AppColors.textMuted,
+                                      fontSize: 13,
+                                      height: 1.4,
+                                    ),
+                                    children: [
+                                      const TextSpan(text: 'I agree to the '),
+                                      TextSpan(
+                                        text: 'Privacy Notice',
+                                        recognizer: _privacyTap,
+                                        style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
+                                      const TextSpan(
+                                        text:
+                                            ' and the processing of my health data (Data Privacy Act of 2012).',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (_submitHint != null) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          _submitHint!,
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.lg),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: cardRadius,
+                          boxShadow: _canSubmit
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: FilledButton(
+                          onPressed: _canSubmit ? _signUp : null,
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(54),
+                            shape: buttonShape,
+                            disabledBackgroundColor:
+                                AppColors.primary.withValues(alpha: 0.35),
+                            disabledForegroundColor:
+                                Colors.white.withValues(alpha: 0.85),
+                          ),
+                          child: _busy
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Create account',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Center(
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text(
+                              'Already have an account? ',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 13,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => context.push('/sign-in'),
+                              child: const Text(
+                                'Sign in',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-                if (_submitHint != null) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    _submitHint!,
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-                FilledButton(
-                  onPressed: _canSubmit ? _signUp : null,
-                  style: FilledButton.styleFrom(
-                    disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.35),
-                    disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
-                  ),
-                  child: _busy
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Create account'),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                TextButton(
-                  onPressed: () => context.push('/sign-in'),
-                  child: const Text('Already have an account? Sign in'),
-                ),
-              ],
+              ),
             ),
           ),
         ],
