@@ -1,0 +1,5 @@
+{
+  "SUPABASE_URL": "https://nugyritgngudgbljjiwk.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51Z3lyaXRnbmd1ZGdibGpqaXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUzNDQwOTYsImV4cCI6MjExMDkyMDA5Nn0.EgXrzAbAK9LLvEbT0Au_Wcl7Y0XyshxSS1TcdKMetNo",
+  "APP_ENV": "prod"
+}

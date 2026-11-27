@@ -5,13 +5,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/env.dart';
 
 // Starts any of the three apps: checks settings, connects to Supabase, then shows the app
-Future<void> bootstrap(Widget app) async {
+Future<void> bootstrap(
+  Widget app, {
+  bool handleAuthDeepLinks = false,
+}) async {
   WidgetsFlutterBinding.ensureInitialized();
   Env.check();
 
   await Supabase.initialize(
     url: Env.supabaseUrl,
     publishableKey: Env.supabasePublishableKey,
+    authOptions: FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.pkce,
+      detectSessionInUri: handleAuthDeepLinks,
+    ),
   );
 
   runApp(ProviderScope(child: app));
