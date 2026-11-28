@@ -6,6 +6,36 @@ import 'package:meditech/providers/admin_pharmacy_providers.dart';
 import 'package:meditech/screens/admin/pharmacies/pharmacies_screen.dart';
 
 void main() {
+  testWidgets('standalone pharmacy screen returns to the previous dashboard', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [pharmacyListProvider.overrideWith((ref) async => [])],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const PharmaciesScreen(),
+                  ),
+                ),
+                child: const Text('Dashboard'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Dashboard'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Back to dashboard'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Back to dashboard'));
+    await tester.pumpAndSettle();
+    expect(find.text('Dashboard'), findsOneWidget);
+  });
+
   // The table shows pharmacies with their status
   testWidgets('shows pharmacies and statuses', (tester) async {
     tester.view.physicalSize = const Size(1400, 900);

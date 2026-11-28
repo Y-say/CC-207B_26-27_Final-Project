@@ -141,6 +141,11 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const NotificationPreferencesScreen(),
       ),
       GoRoute(
+        path: '/profile/change-password',
+        parentNavigatorKey: customerRootNavigatorKey,
+        builder: (context, state) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
         path: '/assistant',
         builder: (context, state) => const AssistantScreen(),
       ),

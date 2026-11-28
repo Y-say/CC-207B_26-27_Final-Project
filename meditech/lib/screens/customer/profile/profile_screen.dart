@@ -64,7 +64,10 @@ class ProfileScreen extends ConsumerWidget {
             await context.push('/profile/notification-preferences');
             ref.invalidate(customerProfileOverviewProvider);
           },
-          onChangePassword: () => context.push('/change-password'),
+          onChangePassword: () async {
+            await context.push('/profile/change-password');
+            ref.invalidate(customerProfileOverviewProvider);
+          },
           onLogout: () => _logout(context, ref),
         ),
       );

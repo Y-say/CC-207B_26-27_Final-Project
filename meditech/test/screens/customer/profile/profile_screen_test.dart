@@ -9,8 +9,10 @@ import 'package:meditech/models/signed_in_account.dart';
 import 'dart:typed_data';
 import 'package:meditech/providers/profile_providers.dart';
 import 'package:meditech/providers/session_providers.dart';
+import 'package:meditech/routes/customer_routes.dart';
 import 'package:meditech/screens/customer/profile/privacy_notice_screen.dart';
 import 'package:meditech/screens/customer/profile/profile_screen.dart';
+import 'package:meditech/screens/shared/change_password_screen.dart';
 import 'package:meditech/services/profile_service.dart';
 
 void main() {
@@ -48,6 +50,48 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: PrivacyNoticeScreen()));
 
     expect(find.text('MediTech Privacy Notice'), findsOneWidget);
+  });
+
+  testWidgets('tapping Change Password opens ChangePasswordScreen for signed-in customer', (tester) async {
+    const account = SignedInAccount(
+      accountType: 'customer',
+      state: 'active',
+      mustChangePassword: false,
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        sessionProvider.overrideWith(() => _FakeSessionNotifier(account)),
+        profileServiceProvider.overrideWithValue(_FakeProfileService()),
+        customerProfileOverviewProvider.overrideWith((ref) async {
+          return _FakeProfileService.overview;
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final router = container.read(customerRouterProvider)..go('/profile');
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final changePasswordTile = find.text('Change Password');
+    await tester.scrollUntilVisible(
+      changePasswordTile,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(changePasswordTile);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ChangePasswordScreen), findsOneWidget);
+    expect(find.text('Current password'), findsOneWidget);
   });
 }
 

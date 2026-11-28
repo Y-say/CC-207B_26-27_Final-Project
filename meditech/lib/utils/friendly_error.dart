@@ -108,6 +108,13 @@ FriendlyError resolveFriendlyError(Object error, {String? action}) {
     );
   }
 
+  if (_matches(raw, 'prc_format')) {
+    return const FriendlyError(
+      title: 'Invalid PRC license number',
+      body: 'PRC license numbers must be exactly 7 digits (e.g. 0123456).',
+    );
+  }
+
   if (_matches(raw, 'Reason must be between 5 and 200 characters')) {
     return const FriendlyError(
       title: 'Reason too short or too long',
@@ -156,14 +163,19 @@ Future<void> showFriendlyErrorDialog(
   String? action,
 }) {
   final friendly = resolveFriendlyError(error, action: action);
-  final bullets = <String>[friendly.body];
-  if (friendly.nextStep != null) {
-    bullets.add(friendly.nextStep!);
+  if (friendly.nextStep == null) {
+    return showTabletMessageDialog(
+      context: context,
+      title: friendly.title,
+      message: friendly.body,
+      isWarning: true,
+      buttonLabel: 'OK',
+    );
   }
   return showTabletMessageDialog(
     context: context,
     title: friendly.title,
-    bullets: bullets,
+    bullets: [friendly.body, friendly.nextStep!],
     isWarning: true,
     buttonLabel: 'OK',
   );
