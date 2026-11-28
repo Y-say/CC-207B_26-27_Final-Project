@@ -171,13 +171,14 @@ class TabletDataTable<T> extends StatelessWidget {
             if (showControls)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Row(
-                  children: [
-                  // Search Input
-                  Expanded(
-                    flex: 3,
-                    child: Container(
-                      height: 44,
+                child: LayoutBuilder(
+                  builder: (context, barConstraints) {
+                    final compactBar =
+                        compactForDrawer || barConstraints.maxWidth < 560;
+                    final countText = '$filteredCount of $totalCount $countLabel';
+
+                    Widget searchField = Container(
+                      height: compactBar ? 42 : 44,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
@@ -189,88 +190,127 @@ class TabletDataTable<T> extends StatelessWidget {
                       child: TextField(
                         onChanged: onSearchChanged,
                         style: GoogleFonts.inter(
-                          fontSize: 13.5,
+                          fontSize: compactBar ? 13 : 13.5,
                           color: const Color(0xFF1A2E22),
                         ),
                         decoration: InputDecoration(
                           hintText: searchHint,
                           hintStyle: GoogleFonts.inter(
-                            fontSize: 13.5,
+                            fontSize: compactBar ? 13 : 13.5,
                             color: const Color(0xFF9CA3AF),
                           ),
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.search,
-                            size: 18,
-                            color: Color(0xFF6B7280),
+                            size: compactBar ? 17 : 18,
+                            color: const Color(0xFF6B7280),
                           ),
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
+                          contentPadding: EdgeInsets.symmetric(
                             horizontal: 12,
-                            vertical: 12,
+                            vertical: compactBar ? 10 : 12,
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
+                    );
 
-                  // Filter Button (fixed width so expanding from "Filters" to "Filters (1)" never shifts the search bar or count)
-                  SizedBox(
-                    height: 44,
-                    width: 132,
-                    child: ElevatedButton.icon(
-                      key: filterButtonKey,
-                      onPressed: onFiltersTap,
-                      icon: const Icon(
-                        Icons.filter_alt_outlined,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                      label: Text(
-                        activeFilterCount > 0
-                            ? 'Filters ($activeFilterCount)'
-                            : 'Filters',
-                        style: GoogleFonts.inter(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
+                    final filterButton = SizedBox(
+                      height: compactBar ? 42 : 44,
+                      width: compactBar ? 118 : 132,
+                      child: ElevatedButton.icon(
+                        key: filterButtonKey,
+                        onPressed: onFiltersTap,
+                        icon: Icon(
+                          Icons.filter_alt_outlined,
+                          size: compactBar ? 17 : 18,
                           color: Colors.white,
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E6B46),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 0,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  // Count display + Spacer wrapped in Expanded(flex: 2) so Search (flex: 3) and Filter Button never move when count text changes
-                  Expanded(
-                    flex: 2,
-                    child: Row(
-                      children: [
-                        Text(
-                          '$filteredCount of $totalCount $countLabel',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF6B7280),
+                        label: Text(
+                          activeFilterCount > 0
+                              ? 'Filters ($activeFilterCount)'
+                              : 'Filters',
+                          style: GoogleFonts.inter(
+                            fontSize: compactBar ? 12.5 : 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
                         ),
-                        const Spacer(),
-                        // Extra action buttons (e.g. + Add entry, Import)
-                        ...?headerActions,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2E6B46),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: compactBar ? 8 : 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    );
+
+                    if (compactBar) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: searchField),
+                              const SizedBox(width: 10),
+                              filterButton,
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  countText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: compactBar ? 12 : 13,
+                                    color: const Color(0xFF6B7280),
+                                  ),
+                                ),
+                              ),
+                              ...?headerActions,
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(flex: 3, child: searchField),
+                        const SizedBox(width: 12),
+                        filterButton,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 2,
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  countText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              ...?headerActions,
+                            ],
+                          ),
+                        ),
                       ],
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
-            ),
 
             // Bulk Actions Bar (if any rows selected)
             if (selectable && selectedIds.isNotEmpty && bulkActions != null)

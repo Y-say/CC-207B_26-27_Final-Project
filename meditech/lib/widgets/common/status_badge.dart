@@ -15,22 +15,25 @@ class StatusBadge extends StatelessWidget {
         tone = BadgeTone.info;
 
   // Stock labels customers see
-  factory StatusBadge.availability(String status, {Key? key}) {
+  factory StatusBadge.availability(String status, {Key? key, bool compact = false}) {
     final (label, tone) = switch (status) {
       'available' => ('Available', BadgeTone.success),
-      'low_stock' => ('Low Stock', BadgeTone.warning),
-      'unavailable' => ('Unavailable', BadgeTone.danger),
-      _ => ('Unconfirmed', BadgeTone.neutral),
+      'low_stock' => (compact ? 'Low' : 'Low Stock', BadgeTone.warning),
+      'unavailable' => (compact ? 'Out' : 'Unavailable', BadgeTone.danger),
+      _ => (compact ? '—' : 'Unconfirmed', BadgeTone.neutral),
     };
     return StatusBadge(label, key: key, tone: tone);
   }
 
   // Reservation statuses
-  factory StatusBadge.reservation(String status, {Key? key}) {
+  factory StatusBadge.reservation(String status, {Key? key, bool compact = false}) {
     final (label, tone) = switch (status) {
       'pending' => ('Pending', BadgeTone.warning),
       'confirmed' => ('Confirmed', BadgeTone.info),
-      'ready_for_pickup' => ('Ready for Pickup', BadgeTone.success),
+      'ready_for_pickup' => (
+          compact ? 'Ready' : 'Ready for Pickup',
+          BadgeTone.success,
+        ),
       'completed' => ('Completed', BadgeTone.neutral),
       'rejected' => ('Rejected', BadgeTone.danger),
       'cancelled' => ('Cancelled', BadgeTone.neutral),
@@ -57,6 +60,9 @@ class StatusBadge extends StatelessWidget {
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(16)),
       child: Text(
         label,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(color: text, fontSize: 12, fontWeight: FontWeight.w600),
       ),
     );

@@ -23,7 +23,34 @@ class AdminShellScreen extends ConsumerWidget {
 
   final String section;
 
-  void _go(BuildContext context, String id) {
+  void _clearDrawerSelections(WidgetRef ref, String leaving) {
+    switch (leaving) {
+      case 'catalogue':
+        ref.read(selectedMedicineProvider.notifier).select(null);
+      case 'pharmacies':
+        ref.read(selectedPharmacyProvider.notifier).select(null);
+      case 'audit':
+        ref.read(selectedAuditProvider.notifier).select(null);
+      default:
+        break;
+    }
+  }
+
+  void _go(BuildContext context, WidgetRef ref, String id) {
+    final target = switch (id) {
+      'overview' => 'overview',
+      'pharmacies' => 'pharmacies',
+      'listings' => 'pharmacies',
+      'catalogue' => 'catalogue',
+      'requests' => 'requests',
+      'audit' => 'audit',
+      _ => 'overview',
+    };
+
+    if (section != target) {
+      _clearDrawerSelections(ref, section);
+    }
+
     switch (id) {
       case 'overview':
         context.go('/overview');
@@ -80,8 +107,11 @@ class AdminShellScreen extends ConsumerWidget {
         'requests' => 'catalogue',
         _ => selected,
       },
-      onNavigationSelected: (id) => _go(context, id),
-      onNotificationsTap: () => context.push('/notifications'),
+      onNavigationSelected: (id) => _go(context, ref, id),
+      onNotificationsTap: () {
+        _clearDrawerSelections(ref, section);
+        context.push('/notifications');
+      },
       onLogoutTap: () async {
         await ref.read(sessionProvider.notifier).signOut();
         if (context.mounted) context.go('/');

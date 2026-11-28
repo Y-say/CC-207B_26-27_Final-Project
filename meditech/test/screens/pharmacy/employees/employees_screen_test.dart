@@ -174,11 +174,11 @@ void main() {
     final fake = _FakeEmployeeService(_sampleEmployees());
     await _pumpEmployees(tester, fake);
 
-    expect(find.text('Ana Santos'), findsAtLeastNWidgets(1));
-    expect(find.text('Jose Reyes'), findsOneWidget);
+    expect(find.textContaining('Ana Santos · EMP-000001'), findsOneWidget);
+    expect(find.textContaining('Jose Reyes · EMP-000002'), findsOneWidget);
     expect(find.text('@demo_pharma'), findsOneWidget);
 
-    await tester.tap(find.text('Jose Reyes'));
+    await tester.tap(find.byTooltip('View employee').at(1));
     await tester.pumpAndSettle();
 
     expect(find.text('Reset password'), findsOneWidget);
@@ -213,20 +213,12 @@ void main() {
     final fake = _FakeEmployeeService(_sampleEmployees());
     await _pumpEmployees(tester, fake);
 
-    await tester.tap(find.text('Jose Reyes'));
+    await tester.tap(find.byTooltip('View employee').at(1));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Deactivate'));
-    await tester.pumpAndSettle();
-    tester.takeException(); // suppress layout overflow in dialog
-    expect(find.text('Deactivate employee?'), findsOneWidget);
-
-    await tester.ensureVisible(find.widgetWithText(ElevatedButton, 'Deactivate').last);
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Deactivate').last);
-    await tester.pumpAndSettle();
-    expect(fake.lastDeactivatedId, 'p1:false');
-
-    await tester.tap(find.text('Reset password'));
+    final resetBtn = find.widgetWithText(OutlinedButton, 'Reset password');
+    await tester.ensureVisible(resetBtn);
+    await tester.tap(resetBtn);
     await tester.pumpAndSettle();
     tester.takeException(); // suppress layout overflow in dialog
     expect(find.text('Reset password?'), findsOneWidget);
@@ -236,6 +228,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(fake.lastResetId, 'p1');
     expect(find.text('ResetPass42'), findsOneWidget);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Deactivate'));
+    await tester.pumpAndSettle();
+    tester.takeException(); // suppress layout overflow in dialog
+    expect(find.text('Deactivate employee?'), findsOneWidget);
+
+    await tester.ensureVisible(find.widgetWithText(ElevatedButton, 'Deactivate').last);
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Deactivate').last);
+    await tester.pumpAndSettle();
+    expect(fake.lastDeactivatedId, 'p1:false');
   });
 
   testWidgets('shows retry state when loading fails', (tester) async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
@@ -39,6 +40,38 @@ class _ReservationsScreenState extends ConsumerState<ReservationsScreen> {
   RequestedDateFilter _dateFilter = RequestedDateFilter.anyTime;
   bool _onlyRx = false;
   bool _showFilters = false;
+  String? _routeOpenApplied;
+  SelectedReservationIdNotifier? _reservationSelection;
+
+  String? _openFromRoute() {
+    final router = GoRouter.maybeOf(context);
+    return router?.state.uri.queryParameters['open'];
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final open = _openFromRoute();
+    if (open != null && open.isNotEmpty && open != _routeOpenApplied) {
+      _routeOpenApplied = open;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(selectedReservationIdProvider.notifier).select(open);
+      });
+    }
+  }
+
+  void _closeDrawer() {
+    ref.read(selectedReservationIdProvider.notifier).select(null);
+    _routeOpenApplied = null;
+    final hadOpenQuery = _openFromRoute() != null;
+    if (hadOpenQuery && GoRouter.maybeOf(context) != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.go('/reservations');
+      });
+    }
+  }
 
   static const _statusOptions = [
     'pending',
@@ -68,11 +101,18 @@ class _ReservationsScreenState extends ConsumerState<ReservationsScreen> {
   @override
   void initState() {
     super.initState();
+    _reservationSelection = ref.read(selectedReservationIdProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(branchReservationsProvider.notifier).refresh();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _reservationSelection?.select(null);
+    super.dispose();
   }
 
   void _resetFilters() {
@@ -308,14 +348,9 @@ class _ReservationsScreenState extends ConsumerState<ReservationsScreen> {
                               items: filtered,
                               columns: const [
                                 TabletColumn(
-                                  title: 'REFERENCE',
+                                  title: 'RESERVATION',
                                   priority: TabletColumnPriority.high,
-                                  width: 170,
-                                ),
-                                TabletColumn(
-                                  title: 'PATIENT',
-                                  priority: TabletColumnPriority.high,
-                                  width: 190,
+                                  width: 220,
                                 ),
                                 TabletColumn(
                                   title: 'MEDICINES',
@@ -330,55 +365,49 @@ class _ReservationsScreenState extends ConsumerState<ReservationsScreen> {
                                 TabletColumn(
                                   title: 'STATUS',
                                   priority: TabletColumnPriority.high,
-                                  width: 150,
+                                  width: 120,
                                 ),
                                 TabletColumn(
                                   title: 'VIEW',
                                   priority: TabletColumnPriority.high,
-                                  width: 80,
+                                  width: 72,
                                   alignment: Alignment.center,
                                 ),
                               ],
                               rowBuilder: (context, item, index) {
                                 final isSelected = item.id == selectedId;
+                                final compact = selectedId != null;
                                 return [
-                                  // Reference column
-                                  Text(
-                                    item.referenceNo,
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14,
-                                      color: isSelected
-                                          ? AppColors.primary
-                                          : const Color(0xFF1A2E22),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            '${item.referenceNo} · ${item.customerName}',
+                                            maxLines: 1,
+                                            softWrap: false,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.inter(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 14,
+                                              color: isSelected
+                                                  ? AppColors.primary
+                                                  : const Color(0xFF1A2E22),
+                                            ),
+                                          ),
+                                        ),
+                                        if (item.hasRx) ...[
+                                          const SizedBox(width: AppSpacing.xs),
+                                          const StatusBadge.rx(),
+                                        ],
+                                      ],
                                     ),
                                   ),
 
-                                  // Patient column with optional Rx badge
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          item.customerName,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.inter(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 14,
-                                            color: const Color(0xFF1A2E22),
-                                          ),
-                                        ),
-                                      ),
-                                      if (item.hasRx) ...[
-                                        const SizedBox(width: AppSpacing.xs),
-                                        const StatusBadge.rx(),
-                                      ],
-                                    ],
-                                  ),
-
-                                  // Medicines summary
                                   Text(
                                     item.medicinesSummary,
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontSize: 13,
@@ -386,20 +415,28 @@ class _ReservationsScreenState extends ConsumerState<ReservationsScreen> {
                                     ),
                                   ),
 
-                                  // Requested date/time
                                   Text(
                                     _formatTimestamp(item.submittedAt),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontSize: 13,
                                       color: AppColors.textMuted,
                                     ),
                                   ),
 
-                                  // Status badge
-                                  StatusBadge.reservation(item.status),
+                                  StatusBadge.reservation(
+                                    item.status,
+                                    compact: compact,
+                                  ),
 
                                   // View action button
                                   IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 40,
+                                      minHeight: 40,
+                                    ),
                                     icon: Icon(
                                       isSelected
                                           ? Icons.visibility
@@ -442,8 +479,7 @@ class _ReservationsScreenState extends ConsumerState<ReservationsScreen> {
           if (selectedId != null)
             ReservationDetailsDrawer(
               reservationId: selectedId,
-              onClose: () =>
-                  ref.read(selectedReservationIdProvider.notifier).select(null),
+              onClose: _closeDrawer,
             ),
         ],
       ),

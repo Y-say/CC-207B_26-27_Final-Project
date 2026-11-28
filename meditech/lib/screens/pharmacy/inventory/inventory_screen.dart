@@ -295,30 +295,29 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     return AsyncView<List<InventoryItem>>(
       value: inventory,
       onRetry: () => ref.invalidate(inventoryProvider),
-      builder: (all) {
-        final table = _buildInventory(all);
-        final editing = _editingItem;
-        if (editing == null) return table;
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (all) => Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(child: table),
-            SizedBox(
-              width: 420,
-              height: MediaQuery.sizeOf(context).height,
-              child: Material(
-                elevation: 8,
-                color: AppColors.surface,
+            Expanded(child: _buildInventory(all)),
+            if (_editingItem != null)
+              Container(
+                width: 420,
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(
+                    left: BorderSide(color: AppColors.border),
+                  ),
+                ),
                 child: EditInventoryDrawer(
-                  item: editing,
+                  item: _editingItem!,
                   onClose: () => setState(() => _editingItem = null),
                 ),
               ),
-            ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -330,116 +329,25 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // The table keeps a usable height; short screens scroll the page
-        final tableHeight = (constraints.maxHeight - 250).clamp(420.0, 2000.0);
+        final drawerOpen = _editingItem != null;
+        final showExplainers = !drawerOpen && constraints.maxHeight >= 850;
 
         return Stack(
           key: _stackKey,
           children: [
             Positioned.fill(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Inventory',
-                                style: GoogleFonts.inter(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF1A2E22),
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'MediTech isn\'t connected to your POS. '
-                                'Update stock here, or import a CSV or Excel '
-                                'file.',
-                                style: TextStyle(
-                                  color: AppColors.textMuted,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(
-                          height: 44,
-                          child: OutlinedButton.icon(
-                            onPressed: _openImport,
-                            icon: const Icon(
-                              Icons.upload_outlined,
-                              size: 18,
-                              color: Color(0xFF1A2E22),
-                            ),
-                            label: Text(
-                              'Import CSV/Excel',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF1A2E22),
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              side: const BorderSide(
-                                color: Color(0xFFD8E8DE),
-                                width: 1.2,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          height: 44,
-                          child: ElevatedButton.icon(
-                            onPressed: _openAddEntry,
-                            icon: const Icon(
-                              Icons.add,
-                              size: 18,
-                              color: Colors.white,
-                            ),
-                            label: Text(
-                              'Add inventory entry',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2E6B46),
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    SizedBox(
-                      height: tableHeight,
-                      child: TabletDataTable<InventoryItem>(
+              child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _inventoryHeader(
+                    maxWidth: constraints.maxWidth,
+                    drawerOpen: drawerOpen,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Expanded(
+                    child: TabletDataTable<InventoryItem>(
                         compactForDrawer: _editingItem != null,
                         filterButtonKey: _filterButtonKey,
                         searchHint: 'Search medicine',
@@ -486,11 +394,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                 : () => _setActive(selectedItems, false),
                           ),
                         ],
-                        columns: const [
+                        columns: [
                           TabletColumn(
                             title: 'MEDICINE',
                             priority: TabletColumnPriority.high,
-                            width: 240,
+                            width: _editingItem != null ? 200 : 240,
                           ),
                           TabletColumn(
                             title: 'STRENGTH',
@@ -520,7 +428,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           TabletColumn(
                             title: 'AVAILABILITY',
                             priority: TabletColumnPriority.high,
-                            width: 140,
+                            width: _editingItem != null ? 108 : 140,
                           ),
                           TabletColumn(
                             title: 'PRICE / UNIT',
@@ -539,27 +447,39 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           ),
                           TabletColumn(
                             title: 'STATUS',
-                            priority: TabletColumnPriority.high,
+                            priority: TabletColumnPriority.medium,
                             width: 110,
                           ),
                           TabletColumn(
-                            title: 'ACTIONS',
+                            title: drawerOpen ? 'EDIT' : 'ACTIONS',
                             priority: TabletColumnPriority.high,
-                            width: 220,
+                            width: drawerOpen ? 72 : 120,
+                            alignment: Alignment.center,
                           ),
                         ],
                         items: shown,
                         rowBuilder: (context, item, index) => [
-                          _medicineCell(item),
+                          _medicineCell(
+                            item,
+                            compact: drawerOpen,
+                            editingSelected: item.id == _editingItem?.id,
+                          ),
                           Text(item.strength),
                           Text(item.dosageForm),
                           Text(item.unit),
                           Text(
-                            '${item.stockQuantity}',
+                            drawerOpen && item.heldQuantity > 0
+                                ? '${item.stockQuantity} (${item.heldQuantity} held)'
+                                : '${item.stockQuantity}',
+                            maxLines: drawerOpen ? 2 : 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                           Text('${item.heldQuantity}'),
-                          StatusBadge.availability(item.availability),
+                          StatusBadge.availability(
+                            item.availability,
+                            compact: _editingItem != null,
+                          ),
                           Text(
                             '₱${item.pricePerUnit.toStringAsFixed(2)}',
                             style: const TextStyle(fontWeight: FontWeight.w700),
@@ -588,11 +508,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         ),
                       ),
                     ),
+                  if (showExplainers) ...[
                     const SizedBox(height: AppSpacing.md),
-                    const Row(
-                      children: [
-                        Expanded(
-                          child: _ExplainerCard(
+                    if (constraints.maxWidth < 900)
+                      const Column(
+                        children: [
+                          _ExplainerCard(
                             title: 'Out of stock switch',
                             body:
                                 'For an empty shelf. The medicine stays '
@@ -601,10 +522,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                 'asks you to count the shelf and enter the '
                                 'new quantity.',
                           ),
-                        ),
-                        SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: _ExplainerCard(
+                          SizedBox(height: AppSpacing.md),
+                          _ExplainerCard(
                             title: 'Deactivate',
                             body:
                                 'For a medicine you stopped carrying. It\'s '
@@ -612,12 +531,39 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                 'stays here under the Inactive filter so you '
                                 'can activate it again.',
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      )
+                    else
+                      const Row(
+                        children: [
+                          Expanded(
+                            child: _ExplainerCard(
+                              title: 'Out of stock switch',
+                              body:
+                                  'For an empty shelf. The medicine stays '
+                                  'listed but shows as Unavailable, and '
+                                  'patients can\'t reserve it. "Back in stock" '
+                                  'asks you to count the shelf and enter the '
+                                  'new quantity.',
+                            ),
+                          ),
+                          SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: _ExplainerCard(
+                              title: 'Deactivate',
+                              body:
+                                  'For a medicine you stopped carrying. It\'s '
+                                  'hidden from patients completely, but it '
+                                  'stays here under the Inactive filter so you '
+                                  'can activate it again.',
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
-                ),
+                ],
               ),
+            ),
             ),
             if (_showFilters) ...[
               // Tapping outside closes the panel
@@ -652,6 +598,137 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
+  Widget _inventoryHeader({
+    required double maxWidth,
+    required bool drawerOpen,
+  }) {
+    final stacked = drawerOpen || maxWidth < 720;
+    final compactActions = drawerOpen || maxWidth < 560;
+
+    final title = Text(
+      'Inventory',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: GoogleFonts.inter(
+        fontSize: drawerOpen ? 24 : 26,
+        fontWeight: FontWeight.w800,
+        color: const Color(0xFF1A2E22),
+        letterSpacing: -0.5,
+      ),
+    );
+
+    final subtitle = drawerOpen
+        ? 'Edit the selected medicine in the panel on the right.'
+        : stacked
+            ? 'Update stock here, or import a CSV or Excel file.'
+            : 'MediTech isn\'t connected to your POS. '
+                'Update stock here, or import a CSV or Excel file.';
+
+    final subtitleWidget = Text(
+      subtitle,
+      maxLines: drawerOpen ? 1 : 2,
+      overflow: TextOverflow.ellipsis,
+      style: GoogleFonts.inter(
+        fontSize: drawerOpen ? 12 : 13,
+        height: 1.35,
+        color: AppColors.textMuted,
+      ),
+    );
+
+    final buttonHeight = drawerOpen ? 42.0 : 44.0;
+    final labelSize = drawerOpen ? 12.5 : 13.0;
+    final horizontalPadding = compactActions ? 12.0 : 16.0;
+
+    final importButton = SizedBox(
+      height: buttonHeight,
+      child: OutlinedButton.icon(
+        onPressed: _openImport,
+        icon: Icon(
+          Icons.upload_outlined,
+          size: drawerOpen ? 16 : 18,
+          color: const Color(0xFF1A2E22),
+        ),
+        label: Text(
+          compactActions ? 'Import' : 'Import CSV/Excel',
+          style: GoogleFonts.inter(
+            fontSize: labelSize,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF1A2E22),
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          side: const BorderSide(color: Color(0xFFD8E8DE), width: 1.2),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      ),
+    );
+
+    final addButton = SizedBox(
+      height: buttonHeight,
+      child: ElevatedButton.icon(
+        onPressed: _openAddEntry,
+        icon: Icon(Icons.add, size: drawerOpen ? 16 : 18, color: Colors.white),
+        label: Text(
+          compactActions ? 'Add' : 'Add inventory entry',
+          style: GoogleFonts.inter(
+            fontSize: labelSize,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2E6B46),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      ),
+    );
+
+    final actions = Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      alignment: WrapAlignment.end,
+      children: [importButton, addButton],
+    );
+
+    if (stacked) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          title,
+          const SizedBox(height: 2),
+          subtitleWidget,
+          const SizedBox(height: 10),
+          actions,
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: 4),
+              subtitleWidget,
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        importButton,
+        const SizedBox(width: 12),
+        addButton,
+      ],
+    );
+  }
+
   // A button for the dark bulk bar
   Widget _bulkButton(
     String label, {
@@ -677,33 +754,63 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
+  void _openEdit(InventoryItem item) {
+    if (widget.onEditItem != null) {
+      widget.onEditItem!(item);
+      return;
+    }
+    final useInline = MediaQuery.sizeOf(context).width >= 900;
+    if (useInline) {
+      setState(() => _editingItem = item);
+    } else {
+      _showEditDrawerOverlay(item);
+    }
+  }
+
   // Name with the generic name underneath, plus an Rx badge when needed
-  Widget _medicineCell(InventoryItem item) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Flexible(
-              child: Text(
-                item.brandName,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+  Widget _medicineCell(
+    InventoryItem item, {
+    bool compact = false,
+    bool editingSelected = false,
+  }) {
+  return SizedBox(
+      width: double.infinity,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  compact ? '${item.brandName} · ${item.strength}' : item.brandName,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: editingSelected
+                        ? AppColors.primary
+                        : null,
+                  ),
+                ),
               ),
-            ),
-            if (item.isRx) ...[
-              const SizedBox(width: 6),
-              const StatusBadge.rx(),
+              if (item.isRx) ...[
+                const SizedBox(width: 4),
+                const StatusBadge.rx(),
+              ],
             ],
-          ],
-        ),
-        Text(
-          item.genericName,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-        ),
-      ],
+          ),
+          if (!compact)
+            Text(
+              item.genericName,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+        ],
+      ),
     );
   }
 
@@ -723,38 +830,45 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
-  // Edit and Deactivate (or Activate) side by side
+  Widget _editIconButton(InventoryItem item, {required bool drawerOpen}) {
+    final isEditing = item.id == _editingItem?.id;
+    return IconButton(
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+      tooltip: 'Edit medicine',
+      onPressed: _busy ? null : () => _openEdit(item),
+      icon: Icon(
+        isEditing && drawerOpen ? Icons.edit : Icons.edit_outlined,
+        size: 20,
+        color: isEditing && drawerOpen
+            ? AppColors.primary
+            : AppColors.textMuted,
+      ),
+    );
+  }
+
+  // Edit icon; Deactivate/Activate text when the drawer is closed
   Widget _actionsCell(InventoryItem item) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          OutlinedButton(
-            onPressed: _busy
-                ? null
-                : () {
-                    if (widget.onEditItem != null) {
-                      widget.onEditItem!(item);
-                      return;
-                    }
-                    final useInline =
-                        MediaQuery.sizeOf(context).width >= 900;
-                    if (useInline) {
-                      setState(() => _editingItem = item);
-                    } else {
-                      _showEditDrawerOverlay(item);
-                    }
-                  },
-            style: OutlinedButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              minimumSize: const Size(0, 32),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-            child: const Text('Edit'),
+    final drawerOpen = _editingItem != null;
+    if (drawerOpen) {
+      return _editIconButton(item, drawerOpen: true);
+    }
+
+    final buttons = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _editIconButton(item, drawerOpen: false),
+        TextButton(
+          onPressed: _busy ? null : () => _setActive([item], !item.isActive),
+          style: TextButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            foregroundColor: item.isActive
+                ? AppColors.danger
+                : AppColors.primary,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            minimumSize: const Size(0, 32),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
           const SizedBox(width: 4),
           TextButton(
@@ -774,6 +888,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             ),
           ),
         ],
+      ),
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: buttons,
       ),
     );
   }
