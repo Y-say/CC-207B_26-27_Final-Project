@@ -12,6 +12,7 @@ import 'registration_draft.dart';
 import 'step_license.dart';
 import 'step_owner.dart';
 import 'step_pharmacy.dart';
+import 'application_submitted_modal.dart';
 import 'step_review.dart';
 
 // The 4-step pharmacy form: new registration, or fixing a rejected one (Ph-02 to Ph-08)
@@ -167,7 +168,11 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         applicationId: state.applicationId!,
         email: _draft.email.text,
         resubmitted: widget.editing,
-        onHome: () async {
+        onContinue: () async {
+          if (widget.editing) {
+            if (context.mounted) Navigator.of(context).maybePop();
+            return;
+          }
           await ref.read(sessionProvider.notifier).signOut();
           if (context.mounted) context.go('/');
         },
@@ -297,89 +302,43 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   }
 }
 
-// Shown after a successful submit or resubmit
-class _SubmittedView extends StatelessWidget {
+// Shown after a successful submit or resubmit; opens the success modal once.
+class _SubmittedView extends StatefulWidget {
   const _SubmittedView({
     required this.applicationId,
     required this.email,
     this.resubmitted = false,
-    required this.onHome,
+    required this.onContinue,
   });
 
   final String applicationId;
   final String email;
   final bool resubmitted;
-  final VoidCallback onHome;
+  final VoidCallback onContinue;
+
+  @override
+  State<_SubmittedView> createState() => _SubmittedViewState();
+}
+
+class _SubmittedViewState extends State<_SubmittedView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await showPharmacyApplicationSubmittedModal(
+        context,
+        applicationId: widget.applicationId,
+        email: widget.email,
+        resubmitted: widget.resubmitted,
+        onContinue: widget.onContinue,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xxl,
-                  vertical: 40,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircleAvatar(
-                      radius: 40,
-                      backgroundColor: AppColors.primaryLight,
-                      child: Icon(
-                        Icons.check,
-                        color: AppColors.primary,
-                        size: 44,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    Text(
-                      resubmitted
-                          ? 'Application resubmitted'
-                          : 'Application submitted',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      resubmitted
-                          ? 'Application ID: $applicationId\n'
-                                "We'll notify you once it's reviewed."
-                          : 'Application ID: $applicationId\n'
-                                "We'll email $email once your application is reviewed.",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: AppColors.textMuted,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    if (resubmitted)
-                      OutlinedButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                        child: const Text('Back to status'),
-                      )
-                    else
-                      FilledButton(
-                        onPressed: onHome,
-                        child: const Text('Back to homepage'),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
 

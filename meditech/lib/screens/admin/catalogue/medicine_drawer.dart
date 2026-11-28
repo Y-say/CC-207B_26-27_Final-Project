@@ -18,6 +18,7 @@ import '../../../widgets/dialogs/reason_dialog.dart';
 import '../../../widgets/theme/app_colors.dart';
 import '../../../widgets/theme/app_spacing.dart';
 import 'catalogue_screen.dart';
+import 'medicine_activated_modal.dart';
 
 // Product FDA check results and how they look
 const _results = <String, (String, BadgeTone)>{
@@ -253,11 +254,26 @@ class _MedicineDrawerState extends ConsumerState<MedicineDrawer> {
 
   // Make it live for pharmacies and customers
   Future<void> _activate() async {
-    final ok = await _run(
-      () => _service.setStatus(m!.id, 'active'),
-      m!.status == 'draft' ? 'Medicine approved and now active.' : 'Medicine is now active.',
-    );
-    if (ok) _refresh(m!.registrationId);
+    final medicine = m!;
+    final wasDraft = medicine.status == 'draft';
+    final brandName = medicine.brandName;
+    final regId = medicine.registrationId;
+
+    setState(() => _busy = true);
+    try {
+      await _service.setStatus(medicine.id, 'active');
+      _refresh(regId);
+      if (!mounted) return;
+      await showMedicineActivatedModal(
+        context,
+        brandName: brandName,
+        firstApproval: wasDraft,
+      );
+    } catch (e) {
+      _tell(CatalogueService.friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   // Take it down, with a reason

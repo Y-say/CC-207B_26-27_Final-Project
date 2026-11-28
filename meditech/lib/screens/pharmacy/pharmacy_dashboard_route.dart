@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/branch_reservation_providers.dart';
+import '../../providers/pharmacy_staff_providers.dart';
 import '../../providers/session_providers.dart';
 import 'dashboard/pharmacy_dashboard_screen.dart';
 
@@ -18,10 +19,12 @@ class PharmacyDashboardRoute extends ConsumerWidget {
       'pharmacist' => 'Pharmacist',
       _ => 'Staff',
     };
+    final profile = ref.watch(pharmacyStaffProfileProvider).value;
+    final displayName = profile?.displayName?.trim();
 
     return PharmacyDashboardScreen(
       staffRoleLabel: roleLabel,
-      staffDisplayName: role == 'owner' ? 'Branch Owner' : null,
+      staffDisplayName: displayName != null && displayName.isNotEmpty ? displayName : null,
       onGoToInventory: () => context.go('/inventory'),
       onOpenReservations: () => context.go('/reservations'),
       onPendingReservationTap: (reservationId) {

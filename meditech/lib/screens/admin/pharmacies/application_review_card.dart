@@ -12,6 +12,7 @@ import '../../../services/admin_pharmacy_service.dart';
 import '../../../widgets/common/app_chip.dart';
 import '../../../widgets/dialogs/confirm_dialog.dart';
 import '../../../widgets/dialogs/reason_dialog.dart';
+import 'pharmacy_approved_modal.dart';
 import '../../../widgets/tablet/tablet_controls.dart';
 import '../../../widgets/theme/app_colors.dart';
 import '../../../widgets/theme/app_spacing.dart';
@@ -199,7 +200,24 @@ class _ApplicationReviewCardState extends ConsumerState<ApplicationReviewCard> {
       actionLabel: 'Approve',
       cancelLabel: 'Cancel',
     );
-    if (ok) await _run(() => _service.approve(d.id), 'Pharmacy approved.');
+    if (!ok) return;
+
+    setState(() => _busy = true);
+    try {
+      await _service.approve(d.id);
+      _refresh();
+      if (!mounted) return;
+      await showPharmacyApprovedModal(
+        context,
+        pharmacyName: d.pharmacyName,
+        branchName: d.branchName,
+        displayId: d.displayId,
+      );
+    } catch (e) {
+      _tell(AdminPharmacyService.friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _reject() async {
