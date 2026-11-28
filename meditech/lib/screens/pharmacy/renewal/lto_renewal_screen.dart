@@ -7,7 +7,6 @@ import '../../../models/lto_renewal.dart';
 import '../../../models/pharmacy_application.dart';
 import '../../../providers/lto_renewal_providers.dart';
 import '../../../services/lto_renewal_service.dart';
-import '../../../widgets/pharmacy/lto_renewal_guidance.dart';
 import '../../../widgets/common/app_text_field.dart';
 import '../../../widgets/common/async_view.dart';
 import '../../../widgets/theme/app_colors.dart';
@@ -26,12 +25,12 @@ class LtoRenewalScreen extends ConsumerWidget {
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.all(AppSpacing.xl),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
+            constraints: const BoxConstraints(maxWidth: 640),
             child: Card(
               child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
+                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 32),
                 child: AsyncView<OwnBranch?>(
                   value: branch,
                   onRetry: () => ref.invalidate(ownBranchProvider),
@@ -66,9 +65,11 @@ class _Content extends ConsumerWidget {
         const Icon(Icons.check_circle, color: AppColors.primary, size: 48),
         const SizedBox(height: AppSpacing.md),
         const Text('Your pharmacy is back online',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
         const SizedBox(height: AppSpacing.sm),
-        const Text('Sign in again to use your dashboard.', textAlign: TextAlign.center),
+        const Text('Sign in again to open your dashboard.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textMuted)),
         const SizedBox(height: AppSpacing.lg),
         FilledButton(onPressed: onSignOut, child: const Text('Sign in again')),
       ]);
@@ -89,11 +90,12 @@ class _Content extends ConsumerWidget {
               style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
         ],
       ),
-      const SizedBox(height: AppSpacing.sm),
-      const Text('Your pharmacy is offline', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
-      const SizedBox(height: AppSpacing.sm),
-      Text('${b.pharmacyName} · ${b.branchName} (${b.displayId}) is hidden from customers. '
-          'Staff accounts are paused until it is back online.'),
+      const SizedBox(height: AppSpacing.md),
+      const Text('Your pharmacy is offline',
+          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+      const SizedBox(height: AppSpacing.xs),
+      Text('${b.pharmacyName} · ${b.branchName} (${b.displayId}) is hidden from customers.',
+          style: const TextStyle(color: AppColors.textMuted)),
       const SizedBox(height: AppSpacing.md),
 
       // Why it was taken offline
@@ -106,15 +108,15 @@ class _Content extends ConsumerWidget {
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Reason from the administrator',
+            const Text('Deactivation reason',
                 style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w700)),
             const SizedBox(height: AppSpacing.xs),
             Text(b.deactivationReason!),
           ]),
         ),
       const SizedBox(height: AppSpacing.md),
-      Text('Current LTO: ${b.ltoNumber} · expires ${date.format(b.ltoExpiry)}',
-          style: const TextStyle(color: AppColors.textMuted)),
+      Text('Current LTO: ${b.ltoNumber} · Expires ${date.format(b.ltoExpiry)}',
+          style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
       const Divider(height: AppSpacing.xl),
 
       // The renewal: waiting, accepted, or the form
@@ -129,15 +131,15 @@ class _Content extends ConsumerWidget {
           'pending' => _Notice(
               icon: Icons.hourglass_top,
               color: AppColors.warning,
-              title: 'Renewed LTO sent, waiting for review',
-              body: 'LTO ${r!.ltoNumber}, expires ${date.format(r.ltoExpiry)}. '
-                  "You'll be notified when the administrator reviews it.",
+              title: 'Renewed LTO sent',
+              body: 'LTO ${r!.ltoNumber} · Expires ${date.format(r.ltoExpiry)}\n'
+                  'Waiting for admin review.',
             ),
           'accepted' => const _Notice(
               icon: Icons.verified_outlined,
               color: AppColors.primary,
               title: 'Renewed LTO accepted',
-              body: 'The administrator will check it with the FDA and reactivate your pharmacy.',
+              body: 'Your pharmacy will be reactivated shortly.',
             ),
           _ => _RenewalForm(branchId: b.id, rejected: r),
         },
@@ -278,13 +280,14 @@ class _RenewalFormState extends ConsumerState<_RenewalForm> {
           _Notice(
             icon: Icons.cancel_outlined,
             color: AppColors.danger,
-            title: 'Your last renewal was not accepted',
-            body: widget.rejected!.reviewReason ?? 'Please send it again.',
+            title: 'Renewal not accepted',
+            body: widget.rejected!.reviewReason ?? 'Please submit a clearer copy.',
           ),
           const SizedBox(height: AppSpacing.lg),
         ],
 
-        const LtoRenewalPrepPanel.uploadStep(),
+        const Text('Submit renewed LTO',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: AppSpacing.md),
 
         AppTextField(
@@ -294,22 +297,49 @@ class _RenewalFormState extends ConsumerState<_RenewalForm> {
         ),
         const SizedBox(height: AppSpacing.md),
 
-        const Text('New expiry date', style: TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
-        OutlinedButton.icon(
-          onPressed: _pickExpiry,
-          icon: const Icon(Icons.calendar_today, size: 18),
-          label: Text(_expiry == null ? 'Pick a date' : date.format(_expiry!)),
-        ),
-        const SizedBox(height: AppSpacing.md),
-
-        const Text('Photo or PDF of the renewed LTO', style: TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
-        OutlinedButton.icon(
-          onPressed: _pickFile,
-          icon: Icon(_file == null ? Icons.upload_file : Icons.check_circle,
-              color: _file == null ? null : AppColors.primary),
-          label: Text(_file?.name ?? 'Choose photo or PDF (max 5 MB)'),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('New expiry date', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _pickExpiry,
+                      icon: const Icon(Icons.calendar_today, size: 18),
+                      label: Text(_expiry == null ? 'Pick a date' : date.format(_expiry!)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('LTO document (max 5 MB)', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _pickFile,
+                      icon: Icon(_file == null ? Icons.upload_file : Icons.check_circle,
+                          color: _file == null ? null : AppColors.primary),
+                      label: Text(
+                        _file?.name ?? 'Choose photo or PDF',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
 
         if (_error != null) ...[

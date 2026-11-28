@@ -177,6 +177,15 @@ class _PharmacyProfileScreenState extends ConsumerState<PharmacyProfileScreen> {
                     const SizedBox(height: AppSpacing.xl),
                     TextButton(
                       onPressed: () async {
+                        final confirmed = await showTabletConfirmDialog(
+                          context: context,
+                          title: 'Log out?',
+                          message: 'Are you sure you want to log out of this branch?',
+                          cancelLabel: 'Cancel',
+                          confirmLabel: 'Log out',
+                          isDanger: true,
+                        );
+                        if (confirmed != true) return;
                         await ref.read(sessionProvider.notifier).signOut();
                         if (context.mounted) context.go('/');
                       },

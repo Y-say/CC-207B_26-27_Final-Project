@@ -6,6 +6,7 @@ import '../../../models/branch_settings.dart';
 import '../../../providers/branch_settings_providers.dart';
 import '../../../providers/session_providers.dart';
 import '../../../utils/app_failure.dart';
+import '../../../utils/friendly_error.dart';
 import '../../../utils/pick_profile_image.dart';
 import '../../../widgets/common/async_view.dart';
 import '../../../widgets/common/pharmacy_storefront_hero.dart';
@@ -110,9 +111,7 @@ class _BranchSettingsScreenState extends ConsumerState<BranchSettingsScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save settings: $e')),
-      );
+      await showFriendlyErrorDialog(context, e, action: 'save settings');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

@@ -63,12 +63,11 @@ class _ReservationDetailsDrawerState
       context: context,
       title: 'Confirm reservation ${res.referenceNo}?',
       targetName: res.hasRx
-          ? 'Rx items included — verify the uploaded prescription before confirming.'
+          ? 'Rx items included — verify the prescription first.'
           : null,
-      consequences: [
-        'Stock will be held for ${res.customerName} until pickup, cancellation, or expiry.',
-      ],
-      confirmLabel: 'Confirm reservation',
+      message: 'Are you sure you want to confirm this reservation?',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Confirm',
     );
 
     if (confirmed == true && mounted) {
@@ -118,12 +117,9 @@ class _ReservationDetailsDrawerState
   Future<void> _handleMarkReady(BranchReservation res) async {
     final confirmed = await showTabletConfirmDialog(
       context: context,
-      title: 'Mark ready for pickup?',
-      targetName: res.referenceNo,
-      consequences: [
-        'The pickup code is generated and sent to ${res.customerName}.',
-        'Place the prepared medicine at the counter before confirming.',
-      ],
+      title: 'Mark ${res.referenceNo} ready for pickup?',
+      message: 'Are you sure you want to mark this reservation ready for pickup?',
+      cancelLabel: 'Cancel',
       confirmLabel: 'Mark ready',
     );
 
@@ -184,18 +180,22 @@ class _ReservationDetailsDrawerState
 
       if (isValid && mounted) {
         // Code matches, open Release & Complete confirmation modal (Ph-20)
-        final medicineDesc = res.items
-            .map((i) => '${i.brandName} × ${i.quantity}')
-            .join(', ');
+        final itemLabels = [
+          for (final i in res.items) '${i.brandName} × ${i.quantity}',
+        ];
+        final useDropdown = itemLabels.length >= 2;
 
         final completed = await showTabletConfirmDialog(
           context: context,
-          title: 'Release medicines and complete?',
-          targetName: '${res.customerName} · $medicineDesc',
-          consequences: [
-            'Medicines are handed to ${res.customerName} and stock is deducted.',
-          ],
-          confirmLabel: 'Release and complete',
+          title: 'Release and complete ${res.referenceNo}?',
+          targetName: useDropdown
+              ? res.customerName
+              : '${res.customerName} · ${itemLabels.join(', ')}',
+          items: useDropdown ? itemLabels : null,
+          itemsLabel: '${itemLabels.length} medicines',
+          message: 'Are you sure you want to complete this reservation?',
+          cancelLabel: 'Cancel',
+          confirmLabel: 'Complete',
         );
 
         if (completed == true && mounted) {

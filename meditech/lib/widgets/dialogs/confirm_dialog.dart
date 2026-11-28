@@ -45,9 +45,10 @@ Future<bool> showConfirmDialog(
                 const SizedBox(height: AppSpacing.md),
                 Text(subject, style: const TextStyle(fontWeight: FontWeight.w600)),
               ],
+              // Simple confirmation message or "WHAT WILL HAPPEN" list
               if (message != null) ...[
                 const SizedBox(height: AppSpacing.md),
-                Text(message),
+                Text(message, style: const TextStyle(color: AppColors.textMuted)),
               ],
               if (whatWillHappen.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
@@ -61,7 +62,7 @@ Future<bool> showConfirmDialog(
                     child: Text('•  $point'),
                   ),
               ],
-              // Go back and the action button
+              // Cancel / Go back and the action button
               const SizedBox(height: AppSpacing.lg),
               Row(children: [
                 Expanded(

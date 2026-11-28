@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
-// Displays the "What will happen" confirmation dialog matching MediTech tablet wireframes
+// Displays a confirmation dialog matching MediTech tablet wireframes
 Future<bool?> showTabletConfirmDialog({
   required BuildContext context,
   required String title,
   String? targetName,
-  required List<String> consequences,
+  List<String>? items,
+  String? itemsLabel,
+  String? message,
+  List<String> consequences = const [],
   String confirmLabel = 'Confirm',
   String cancelLabel = 'Go back',
   bool isDanger = false,
@@ -15,18 +18,18 @@ Future<bool?> showTabletConfirmDialog({
     barrierDismissible: false,
     builder: (context) {
       return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         elevation: 16,
         child: Container(
-          width: 480,
-          padding: const EdgeInsets.all(24),
+          width: 500,
+          padding: const EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Header Icon and Title
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
@@ -42,75 +45,86 @@ Future<bool?> showTabletConfirmDialog({
                   ),
                   const SizedBox(width: 14),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                        if (targetName != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            targetName,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF4B5563),
-                            ),
-                          ),
-                        ],
-                      ],
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                      ),
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 20),
-
-              // "WHAT WILL HAPPEN" Section
-              const Text(
-                'WHAT WILL HAPPEN',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF6B7280),
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Bullets
-              for (final item in consequences)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '• ',
-                        style: TextStyle(
-                          color: Color(0xFF4B5563),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          item,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF374151),
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
+              if (targetName != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  targetName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF4B5563),
                   ),
                 ),
+              ],
+
+              if (items != null && items.length > 1) ...[
+                const SizedBox(height: 16),
+                _SelectedItemsDropdown(items: items, label: itemsLabel),
+              ],
+
+              if (message != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF4B5563),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+
+              if (consequences.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                const Text(
+                  'WHAT WILL HAPPEN',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF6B7280),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                for (final item in consequences)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '• ',
+                          style: TextStyle(
+                            color: Color(0xFF4B5563),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            item,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF374151),
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
 
               const SizedBox(height: 24),
 
@@ -326,7 +340,8 @@ Future<String?> showTabletReasonDialog({
 Future<void> showTabletMessageDialog({
   required BuildContext context,
   required String title,
-  required List<String> bullets,
+  String? message,
+  List<String> bullets = const [],
   bool isWarning = true,
   String buttonLabel = 'OK',
 }) {
@@ -335,17 +350,17 @@ Future<void> showTabletMessageDialog({
     barrierDismissible: false,
     builder: (context) {
       return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         elevation: 16,
         child: Container(
-          width: 480,
-          padding: const EdgeInsets.all(24),
+          width: 500,
+          padding: const EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
@@ -374,43 +389,56 @@ Future<void> showTabletMessageDialog({
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'DETAILS',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF6B7280),
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 10),
-              for (final item in bullets)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '• ',
-                        style: TextStyle(
-                          color: Color(0xFF4B5563),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          item,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF374151),
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
+              if (message != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF4B5563),
+                    height: 1.4,
                   ),
                 ),
+              ],
+              if (bullets.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                const Text(
+                  'DETAILS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF6B7280),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                for (final item in bullets)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '• ',
+                          style: TextStyle(
+                            color: Color(0xFF4B5563),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            item,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF374151),
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -543,4 +571,80 @@ Future<void> showTabletImageViewer({
       );
     },
   );
+}
+
+// Collapsible dropdown for showing multiple selected items without cramping the dialog
+class _SelectedItemsDropdown extends StatefulWidget {
+  const _SelectedItemsDropdown({required this.items, this.label});
+
+  final List<String> items;
+  final String? label;
+
+  @override
+  State<_SelectedItemsDropdown> createState() => _SelectedItemsDropdownState();
+}
+
+class _SelectedItemsDropdownState extends State<_SelectedItemsDropdown> {
+  var _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.label ?? '${widget.items.length} selected medicines',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    size: 20,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded) ...[
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 160),
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                itemCount: widget.items.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 4),
+                itemBuilder: (_, index) => Text(
+                  '•  ${widget.items[index]}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF4B5563),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

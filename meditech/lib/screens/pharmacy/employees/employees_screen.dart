@@ -134,10 +134,8 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
       context: context,
       title: 'Reset password?',
       targetName: '${employee.fullName} · ${employee.displayId}',
-      consequences: const [
-        'Generates a new one-time password for this employee.',
-        'They must change it on their next sign-in.',
-      ],
+      message: 'Are you sure you want to reset this employee\'s password?',
+      cancelLabel: 'Cancel',
       confirmLabel: 'Reset password',
     );
     if (confirmed != true || !mounted) return;
@@ -163,15 +161,10 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
       context: context,
       title: nextActive ? 'Reactivate employee?' : 'Deactivate employee?',
       targetName: '${employee.fullName} · ${employee.displayId}',
-      consequences: nextActive
-          ? const [
-              'Allows this employee to sign in again.',
-              'Keeps their previous role and history.',
-            ]
-          : const [
-              'Signs this employee out of all sessions.',
-              'Blocks them from signing in until reactivated.',
-            ],
+      message: nextActive
+          ? 'Are you sure you want to reactivate this employee?'
+          : 'Are you sure you want to deactivate this employee?',
+      cancelLabel: 'Cancel',
       confirmLabel: nextActive ? 'Reactivate' : 'Deactivate',
       isDanger: !nextActive,
     );
@@ -218,15 +211,10 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
       context: context,
       title: nextRole == 'pharmacist' ? 'Promote to Pharmacist?' : 'Change role to Staff?',
       targetName: '${employee.fullName} · ${employee.displayId}',
-      consequences: nextRole == 'pharmacist'
-          ? [
-              'Changes role from Staff to Pharmacist (PRC $prcNo).',
-              'License starts as Pending until verified.',
-            ]
-          : const [
-              'Changes role from Pharmacist to Staff.',
-              'Removes permission to confirm or release Rx reservations.',
-            ],
+      message: nextRole == 'pharmacist'
+          ? 'Are you sure you want to promote this employee to Pharmacist (PRC $prcNo)?'
+          : 'Are you sure you want to change this employee\'s role to Staff?',
+      cancelLabel: 'Cancel',
       confirmLabel: 'Change role',
       isDanger: nextRole == 'staff',
     );
@@ -354,13 +342,10 @@ class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
       context: context,
       title: employee.isOwner ? 'Confirm your own PRC license?' : 'Save license changes?',
       targetName: '${employee.fullName} · PRC ${result.prcLicenseNo}',
-      consequences: [
-        if (employee.isOwner)
-          'You confirm these PRC license details belong to you and are true.',
-        result.markVerified
-            ? 'Marks the license Verified until ${formatEmployeeDate(result.prcLicenseExpiry)}.'
-            : 'Saves the license as Pending verification.',
-      ],
+      message: employee.isOwner
+          ? 'Are you sure these PRC license details belong to you and are true?'
+          : 'Are you sure you want to save these license changes?',
+      cancelLabel: 'Cancel',
       confirmLabel: result.markVerified ? 'Save & verify' : 'Save license',
     );
     if (confirmed != true || !mounted) return;

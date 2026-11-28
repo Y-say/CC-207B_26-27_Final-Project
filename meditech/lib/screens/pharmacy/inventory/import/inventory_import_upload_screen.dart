@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -51,9 +52,9 @@ class _InventoryImportUploadScreenState
       if (!mounted) return;
 
       _showSnack(
-        savedPath == null
-            ? 'Template download cancelled.'
-            : 'Template saved.',
+        kIsWeb || savedPath != null
+            ? 'Template downloaded successfully.'
+            : 'Template download cancelled.',
       );
     } catch (error) {
       if (mounted) {

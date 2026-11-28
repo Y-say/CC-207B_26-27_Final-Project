@@ -217,10 +217,8 @@ class _PharmacySignInScreenState extends ConsumerState<PharmacySignInScreen> {
                               context: context,
                               title: 'Check your application status',
                               isWarning: false,
-                              bullets: const [
-                                'Sign in with the owner username from your application.',
-                                'Waiting or rejected applications open the status page right after sign-in.',
-                              ],
+                              message:
+                                  'Sign in with your owner username to view your application status.',
                             );
                           },
                           child: const Text('Already applied? Check your application status'),

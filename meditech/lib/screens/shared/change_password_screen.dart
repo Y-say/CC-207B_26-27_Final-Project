@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../providers/session_providers.dart';
 import '../../utils/app_failure.dart';
@@ -123,73 +124,126 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final account = ref.watch(sessionProvider);
+    final mustChange = account?.mustChangePassword == true;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Change password')),
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: BackButton(
+          onPressed: () async {
+            if (mustChange) {
+              await ref.read(sessionProvider.notifier).signOut();
+              if (context.mounted) context.go('/');
+              return;
+            }
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/profile');
+            }
+          },
+        ),
+      ),
       body: Column(
         children: [
           if (_offline) const OfflineBanner(),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              children: [
-                AppPasswordField(
-                  label: 'Current password',
-                  controller: _currentPassword,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppPasswordField(
-                  label: 'New password',
-                  controller: _newPassword,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppPasswordField(
-                  label: 'Confirm new password',
-                  controller: _confirmPassword,
-                  errorText: _error,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                FilledButton(
-                  onPressed: _busy ? null : _save,
-                  child: _busy
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Save password'),
-                ),
-                if (_saved) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.35),
-                      ),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          color: AppColors.primary,
-                        ),
-                        SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            'Your password has been changed.',
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Change password',
                             style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            mustChange
+                                ? 'Set a new password to continue.'
+                                : 'Enter your current password and choose a new one.',
+                            style: const TextStyle(color: AppColors.textMuted),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          AppPasswordField(
+                            label: 'Current password',
+                            controller: _currentPassword,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          AppPasswordField(
+                            label: 'New password',
+                            controller: _newPassword,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          AppPasswordField(
+                            label: 'Confirm new password',
+                            controller: _confirmPassword,
+                            errorText: _error,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          FilledButton(
+                            onPressed: _busy ? null : _save,
+                            child: _busy
+                                ? const SizedBox(
+                                    height: 22,
+                                    width: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Save password'),
+                          ),
+                          if (_saved) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(alpha: 0.35),
+                                ),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    color: AppColors.primary,
+                                  ),
+                                  SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: Text(
+                                      'Your password has been changed.',
+                                      style: TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ],
+                ),
+              ),
             ),
           ),
         ],

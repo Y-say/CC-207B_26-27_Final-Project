@@ -119,20 +119,12 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       title: widget.editing
           ? 'Resubmit your application?'
           : 'Submit your application?',
-      whatWillHappen: widget.editing
-          ? const [
-              'Your application goes back to the administrator for review.',
-              'It keeps its original application number and place in line.',
-              "You'll be notified when it's reviewed.",
-            ]
-          : [
-              'The MediTech administrator checks your LTO on the FDA verification portal.',
-              "Your Owner account stays locked until you're approved. "
-                  "You'll get an email at ${_draft.email.text}.",
-              "Patients can't see your pharmacy until it's approved and you add inventory.",
-            ],
+      message: widget.editing
+          ? 'Are you sure you want to resubmit this pharmacy application?'
+          : 'Are you sure you want to submit this pharmacy application?',
+      cancelLabel: 'Cancel',
       actionLabel: widget.editing
-          ? 'Resubmit application'
+          ? 'Resubmit'
           : 'Submit application',
     );
     if (!ok) return;
@@ -323,54 +315,65 @@ class _SubmittedView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircleAvatar(
-                    radius: 32,
-                    backgroundColor: AppColors.primaryLight,
-                    child: Icon(
-                      Icons.check,
-                      color: AppColors.primary,
-                      size: 36,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xxl,
+                  vertical: 40,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircleAvatar(
+                      radius: 40,
+                      backgroundColor: AppColors.primaryLight,
+                      child: Icon(
+                        Icons.check,
+                        color: AppColors.primary,
+                        size: 44,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    resubmitted
-                        ? 'Application resubmitted'
-                        : 'Application submitted',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
+                    const SizedBox(height: AppSpacing.xl),
+                    Text(
+                      resubmitted
+                          ? 'Application resubmitted'
+                          : 'Application submitted',
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    resubmitted
-                        ? '$applicationId is back with the administrator for review. '
-                              "You'll be notified when it's reviewed."
-                        : "Your application ID is $applicationId. We'll email $email when it's "
-                              'reviewed. Your Owner account stays locked until then.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  if (resubmitted)
-                    OutlinedButton(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                      child: const Text('Back to status'),
-                    )
-                  else
-                    FilledButton(
-                      onPressed: onHome,
-                      child: const Text('Back to homepage'),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      resubmitted
+                          ? 'Application ID: $applicationId\n'
+                                "We'll notify you once it's reviewed."
+                          : 'Application ID: $applicationId\n'
+                                "We'll email $email once your application is reviewed.",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textMuted,
+                        height: 1.5,
+                      ),
                     ),
-                ],
+                    const SizedBox(height: AppSpacing.xl),
+                    if (resubmitted)
+                      OutlinedButton(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        child: const Text('Back to status'),
+                      )
+                    else
+                      FilledButton(
+                        onPressed: onHome,
+                        child: const Text('Back to homepage'),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

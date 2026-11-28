@@ -6,6 +6,7 @@ import '../../../../models/inventory_item.dart';
 import '../../../../providers/inventory_providers.dart';
 import '../../../../providers/stock_alerts_providers.dart';
 import '../../../../services/inventory_import_service.dart';
+import '../../../../widgets/tablet/tablet_dialogs.dart';
 import '../../../../widgets/theme/app_colors.dart';
 import '../../../../widgets/theme/app_spacing.dart';
 
@@ -156,6 +157,18 @@ class _InventoryImportReviewScreenState
   }
 
   Future<void> _removeRow(Map<String, dynamic> row) async {
+    final name = row['raw_medicine_name']?.toString().trim();
+    final confirmed = await showTabletConfirmDialog(
+      context: context,
+      title: 'Delete item?',
+      targetName: (name != null && name.isNotEmpty) ? name : null,
+      message: 'Are you sure you want to delete this item?',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Delete',
+      isDanger: true,
+    );
+    if (confirmed != true || !mounted) return;
+
     setState(() => _working = true);
 
     try {
