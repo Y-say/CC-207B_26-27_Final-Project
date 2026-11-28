@@ -1,5 +1,8 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -124,11 +127,23 @@ class _AuditListScreenState extends ConsumerState<AuditListScreen> {
   Future<void> _export() async {
     try {
       final csv = await ref.read(auditServiceProvider).exportCsv();
-      await Clipboard.setData(ClipboardData(text: csv));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('CSV copied. Paste it into a spreadsheet.')),
+
+      final stamp = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+      final savedPath = await FilePicker.saveFile(
+        dialogTitle: 'Save audit records as CSV',
+        fileName: 'meditech_audit_$stamp.csv',
+        bytes: utf8.encode(csv),
+        mimeType: 'text/csv',
       );
+
+      if (!mounted) return;
+
+      if (kIsWeb || savedPath != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('CSV saved successfully.')),
+        );
+      }
     } on AppFailure catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));

@@ -196,119 +196,121 @@ class _NotificationListScreenState
           final visible = _showAll ? items : items.take(_recentLimit).toList();
           final canExpand = items.length > _recentLimit;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Header row matching wireframe: "Notifications" on left, actions on right
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
+          final compactPhone = !widget.embedded;
+
+          return ListView(
+            padding: EdgeInsets.fromLTRB(
+              compactPhone ? AppSpacing.lg : AppSpacing.xl,
+              compactPhone ? AppSpacing.md : AppSpacing.xl,
+              compactPhone ? AppSpacing.lg : AppSpacing.xl,
+              AppSpacing.xl,
+            ),
+            children: [
+              if (widget.embedded)
+                Text(
+                  'Notifications',
+                  style: GoogleFonts.inter(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF1A2E22),
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              if (!widget.embedded && unreadCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: Text(
+                    unreadCount == 1 ? '1 unread' : '$unreadCount unread',
+                    style: GoogleFonts.inter(
+                      fontSize: 13.5,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
+                ),
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                alignment: compactPhone ? WrapAlignment.start : WrapAlignment.end,
+                children: [
+                  if (canExpand)
+                    TextButton(
+                      onPressed: () => setState(() => _showAll = !_showAll),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF2E6B46),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                      ),
                       child: Text(
-                        widget.embedded ? 'Notifications' : 'Recent',
+                        _showAll ? 'Show recent' : 'View all',
                         style: GoogleFonts.inter(
-                          fontSize: widget.embedded ? 28 : 20,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF1A2E22),
-                          letterSpacing: -0.5,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF2E6B46),
                         ),
                       ),
                     ),
-                    if (canExpand)
-                      TextButton(
-                        onPressed: () =>
-                            setState(() => _showAll = !_showAll),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF2E6B46),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                        ),
-                        child: Text(
-                          _showAll ? 'Show recent' : 'View all',
-                          style: GoogleFonts.inter(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF2E6B46),
-                          ),
+                  if (unreadCount > 0)
+                    TextButton(
+                      onPressed: _bulkBusy ? null : _markAllRead,
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF2E6B46),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
                         ),
                       ),
-                    if (unreadCount > 0) ...[
-                      const SizedBox(width: 4),
-                      TextButton(
-                        onPressed: _bulkBusy ? null : _markAllRead,
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF2E6B46),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                        ),
-                        child: _bulkBusy
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                'Mark all as read',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF2E6B46),
-                                ),
+                      child: _bulkBusy
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              'Mark all as read',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF2E6B46),
                               ),
-                      ),
-                    ],
-                    if (items.isNotEmpty) ...[
-                      const SizedBox(width: 4),
-                      TextButton(
-                        onPressed: _bulkBusy ? null : _clearAll,
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFFC93B3B),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                        ),
-                        child: Text(
-                          'Clear all',
-                          style: GoogleFonts.inter(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFC93B3B),
-                          ),
+                            ),
+                    ),
+                  if (items.isNotEmpty)
+                    TextButton(
+                      onPressed: _bulkBusy ? null : _clearAll,
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFC93B3B),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
                         ),
                       ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 18),
-
-                // Notification cards list (full width left-to-right)
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: visible.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = visible[index];
-                    return _NotificationCard(
-                      item: item,
-                      onTap: () => _open(item),
-                      onMarkRead:
-                          item.isUnread ? () => _markRead(item.id) : null,
-                      onDelete: () => _delete(item.id),
-                    );
-                  },
+                      child: Text(
+                        'Clear all',
+                        style: GoogleFonts.inter(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFC93B3B),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              SizedBox(height: compactPhone ? 14 : 18),
+              for (var i = 0; i < visible.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                _NotificationCard(
+                  item: visible[i],
+                  compact: compactPhone,
+                  onTap: () => _open(visible[i]),
+                  onMarkRead: visible[i].isUnread
+                      ? () => _markRead(visible[i].id)
+                      : null,
+                  onDelete: () => _delete(visible[i].id),
                 ),
               ],
-            ),
+            ],
           );
         },
       ),
@@ -368,12 +370,14 @@ class _NotificationCard extends StatelessWidget {
     required this.onTap,
     this.onMarkRead,
     required this.onDelete,
+    this.compact = false,
   });
 
   final AppNotification item;
   final VoidCallback onTap;
   final VoidCallback? onMarkRead;
   final VoidCallback onDelete;
+  final bool compact;
 
   String _formatTime(DateTime createdAt) {
     final local = createdAt.toLocal();
@@ -415,118 +419,199 @@ class _NotificationCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 16,
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 14 : 20,
+              vertical: compact ? 14 : 16,
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Circular soft yellow/green icon badge
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: tone.iconBackground,
-                    shape: BoxShape.circle,
+            child: compact ? _compactCardContent(tone, timeStr) : _wideCardContent(tone, timeStr),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _iconBadge(_NotificationTone tone) {
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: tone.iconBackground,
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Icon(tone.icon, size: 20, color: tone.iconForeground),
+    );
+  }
+
+  Widget _titleText() {
+    return Text(
+      item.title,
+      style: GoogleFonts.inter(
+        fontWeight: item.isUnread ? FontWeight.w700 : FontWeight.w600,
+        color: const Color(0xFF1A2E22),
+        fontSize: 14.5,
+        height: 1.25,
+      ),
+    );
+  }
+
+  Widget _bodyText({int maxLines = 2}) {
+    if (item.body.trim().isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(
+        item.body,
+        maxLines: maxLines,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.inter(
+          fontSize: 13,
+          color: const Color(0xFF6B7280),
+          height: 1.35,
+        ),
+      ),
+    );
+  }
+
+  Widget _timeText(String timeStr) {
+    return Text(
+      timeStr,
+      style: GoogleFonts.inter(
+        fontSize: 12,
+        color: const Color(0xFF9CA3AF),
+      ),
+    );
+  }
+
+  Widget _actionButtons({bool showLabels = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (onMarkRead != null)
+          showLabels
+              ? Tooltip(
+                  message: 'Mark as read',
+                  child: TextButton.icon(
+                    onPressed: onMarkRead,
+                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                    label: const Text('Mark read'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF2E6B46),
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    tone.icon,
-                    size: 20,
-                    color: tone.iconForeground,
+                )
+              : IconButton(
+                  tooltip: 'Mark as read',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  onPressed: onMarkRead,
+                  icon: const Icon(
+                    Icons.check_circle_outline,
+                    color: Color(0xFF2E6B46),
+                    size: 19,
                   ),
                 ),
-                const SizedBox(width: 16),
+        IconButton(
+          tooltip: 'Remove',
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          onPressed: onDelete,
+          icon: const Icon(Icons.close, size: 18, color: Color(0xFF9CA3AF)),
+        ),
+      ],
+    );
+  }
 
-                // Main notification message
-                Expanded(
-                  child: Column(
+  /// Phone layout: icon + stacked title/body/time; actions on their own row.
+  Widget _compactCardContent(_NotificationTone tone, String timeStr) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _iconBadge(tone),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.title,
-                        style: GoogleFonts.inter(
-                          fontWeight: item.isUnread
-                              ? FontWeight.w700
-                              : FontWeight.w600,
-                          color: const Color(0xFF1A2E22),
-                          fontSize: 14.5,
-                        ),
-                      ),
-                      if (item.body.trim().isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          item.body,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            color: Color(0xFF6B7280),
-                            height: 1.3,
+                      Expanded(child: _titleText()),
+                      if (item.isUnread) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(top: 5),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFE65100),
+                            shape: BoxShape.circle,
                           ),
                         ),
                       ],
                     ],
                   ),
-                ),
-                const SizedBox(width: 12),
-
-                // Right side: Time + Red/Orange unread dot + existing Mark Read & Delete actions
-                Text(
-                  timeStr,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                if (item.isUnread)
-                  Container(
-                    width: 9,
-                    height: 9,
-                    margin: const EdgeInsets.only(right: 6),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE65100),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                if (onMarkRead != null)
-                  IconButton(
-                    tooltip: 'Mark as read',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
-                    ),
-                    onPressed: onMarkRead,
-                    icon: const Icon(
-                      Icons.check_circle_outline,
-                      color: Color(0xFF2E6B46),
-                      size: 19,
-                    ),
-                  ),
-                IconButton(
-                  tooltip: 'Remove',
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 32,
-                  ),
-                  onPressed: onDelete,
-                  icon: const Icon(
-                    Icons.close,
-                    size: 18,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                ),
-              ],
+                  _bodyText(maxLines: 4),
+                  const SizedBox(height: 6),
+                  _timeText(timeStr),
+                ],
+              ),
             ),
+          ],
+        ),
+        if (onMarkRead != null) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _actionButtons(showLabels: true),
+          ),
+        ] else ...[
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _actionButtons(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Tablet layout: single row with inline actions.
+  Widget _wideCardContent(_NotificationTone tone, String timeStr) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _iconBadge(tone),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _titleText(),
+              _bodyText(),
+            ],
           ),
         ),
-      ),
+        const SizedBox(width: 12),
+        _timeText(timeStr),
+        const SizedBox(width: 10),
+        if (item.isUnread)
+          Container(
+            width: 9,
+            height: 9,
+            margin: const EdgeInsets.only(right: 6),
+            decoration: const BoxDecoration(
+              color: Color(0xFFE65100),
+              shape: BoxShape.circle,
+            ),
+          ),
+        _actionButtons(),
+      ],
     );
   }
 }

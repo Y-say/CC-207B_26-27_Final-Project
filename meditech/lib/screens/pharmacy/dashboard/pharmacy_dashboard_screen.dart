@@ -122,7 +122,7 @@ class _DashboardContent extends StatelessWidget {
     final name = staffDisplayName?.trim();
     final welcome = name == null || name.isEmpty
         ? 'Welcome, $staffRoleLabel'
-        : 'Welcome, $staffRoleLabel, $name';
+        : 'Welcome, $name';
 
     return SingleChildScrollView(
       child: Column(

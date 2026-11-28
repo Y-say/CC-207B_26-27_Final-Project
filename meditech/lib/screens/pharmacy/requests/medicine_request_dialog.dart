@@ -15,6 +15,20 @@ Future<String?> showMedicineRequestDialog(BuildContext context, {String? searche
   );
 }
 
+// Opens the dialog and confirms success to the user
+Future<void> openMedicineRequestFlow(BuildContext context, {String? searchedName}) async {
+  final number = await showMedicineRequestDialog(context, searchedName: searchedName);
+  if (!context.mounted || number == null) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        'Request $number sent to the MediTech administrator. '
+        'You’ll be notified when it’s reviewed.',
+      ),
+    ),
+  );
+}
+
 class _MedicineRequestDialog extends ConsumerStatefulWidget {
   const _MedicineRequestDialog({this.searchedName});
 

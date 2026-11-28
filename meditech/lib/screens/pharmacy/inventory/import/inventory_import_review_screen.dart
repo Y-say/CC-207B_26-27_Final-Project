@@ -9,6 +9,7 @@ import '../../../../services/inventory_import_service.dart';
 import '../../../../widgets/tablet/tablet_dialogs.dart';
 import '../../../../widgets/theme/app_colors.dart';
 import '../../../../widgets/theme/app_spacing.dart';
+import '../../requests/medicine_request_dialog.dart';
 
 // Ph-29: Staged import review modal matching Figma wireframe.
 class InventoryImportReviewScreen extends ConsumerStatefulWidget {
@@ -1092,6 +1093,29 @@ class _InlineEditableImportRowState extends State<_InlineEditableImportRow> {
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFFC93B3B),
+                        ),
+                      ),
+                    ),
+                  if (!widget.valid && _hasMedicineError)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: widget.isReviewing && !widget.working
+                              ? () => openMedicineRequestFlow(
+                                    context,
+                                    searchedName: _medicineCtrl.text.trim(),
+                                  )
+                              : null,
+                          icon: const Icon(Icons.outgoing_mail, size: 16),
+                          label: Text(
+                            'Request this medicine from admin',
+                            style: GoogleFonts.inter(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                     ),

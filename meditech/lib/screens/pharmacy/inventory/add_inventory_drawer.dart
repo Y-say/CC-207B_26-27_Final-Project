@@ -9,6 +9,7 @@ import '../../../providers/stock_alerts_providers.dart';
 import '../../../widgets/common/status_badge.dart';
 import '../../../widgets/theme/app_colors.dart';
 import '../../../widgets/theme/app_spacing.dart';
+import '../requests/medicine_request_dialog.dart';
 
 // Slide-in drawer to add a new medicine from the active catalogue to branch inventory
 class AddInventoryDrawer extends ConsumerStatefulWidget {
@@ -299,6 +300,7 @@ class _AddInventoryDrawerState extends ConsumerState<AddInventoryDrawer> {
                         }).toList();
 
                         if (available.isEmpty) {
+                          final canRequest = q.isNotEmpty;
                           return Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -306,14 +308,50 @@ class _AddInventoryDrawerState extends ConsumerState<AddInventoryDrawer> {
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(color: const Color(0xFFD8E8DE)),
                             ),
-                            child: Text(
-                              q.isEmpty
-                                  ? 'All active catalogue medicines are already in your inventory.'
-                                  : 'No matching medicine found in the active catalogue.',
-                              style: GoogleFonts.inter(
-                                fontSize: 12.5,
-                                color: const Color(0xFF6B7280),
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  q.isEmpty
+                                      ? 'All active catalogue medicines are already in your inventory.'
+                                      : 'No matching medicine found in the active catalogue.',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.5,
+                                    color: const Color(0xFF6B7280),
+                                  ),
+                                ),
+                                if (canRequest) ...[
+                                  const SizedBox(height: 12),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => openMedicineRequestFlow(
+                                        context,
+                                        searchedName: _searchController.text.trim(),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFF2E6B46),
+                                        side: const BorderSide(color: Color(0xFF2E6B46)),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                                      label: Text(
+                                        'Request this medicine',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           );
                         }
