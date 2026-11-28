@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/branch_reservation_providers.dart';
 import '../../providers/lto_renewal_providers.dart';
 import '../../providers/notification_providers.dart';
 import '../../providers/pharmacy_staff_providers.dart';
@@ -36,6 +37,13 @@ class _PharmacyShellScreenState extends ConsumerState<PharmacyShellScreen> {
     });
   }
 
+  void _clearReservationDrawerIfOpen(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
+    if (location.startsWith('/reservations')) {
+      ref.read(selectedReservationIdProvider.notifier).select(null);
+    }
+  }
+
   static String navigationIdFor(String matchedLocation) {
     if (matchedLocation.startsWith('/reservations')) return 'reservations';
     if (matchedLocation.startsWith('/inventory')) return 'inventory';
@@ -56,6 +64,11 @@ class _PharmacyShellScreenState extends ConsumerState<PharmacyShellScreen> {
       'employees' => '/employees',
       _ => '/dashboard',
     };
+
+    final location = GoRouterState.of(context).matchedLocation;
+    if (location.startsWith('/reservations') && id != 'reservations') {
+      ref.read(selectedReservationIdProvider.notifier).select(null);
+    }
 
     context.go(path);
   }
@@ -99,9 +112,18 @@ class _PharmacyShellScreenState extends ConsumerState<PharmacyShellScreen> {
       stockAlertsCount: stockAlertCount,
       selectedNavigationId: selected,
       onNavigationSelected: (id) => _go(context, id),
-      onNotificationsTap: () => context.go('/notifications'),
-      onProfileTap: () => context.go('/profile'),
-      onSettingsTap: () => context.go('/settings'),
+      onNotificationsTap: () {
+        _clearReservationDrawerIfOpen(context);
+        context.go('/notifications');
+      },
+      onProfileTap: () {
+        _clearReservationDrawerIfOpen(context);
+        context.go('/profile');
+      },
+      onSettingsTap: () {
+        _clearReservationDrawerIfOpen(context);
+        context.go('/settings');
+      },
       onLogoutTap: () async {
         await ref.read(sessionProvider.notifier).signOut();
         if (context.mounted) context.go('/');

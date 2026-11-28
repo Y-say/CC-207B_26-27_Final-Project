@@ -110,9 +110,13 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
     final view = rows.whenData((all) => CatalogueView.of(all, filter));
 
     final total = rows.value?.length;
+    final shellDrawerOpen = widget.drawerInShell &&
+        selected != null &&
+        MediaQuery.sizeOf(context).width >= 900;
+    final compact = shellDrawerOpen;
 
     final content = Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -123,40 +127,47 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Medicine catalogue',
-                        style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
                       Text(
-                        total == null ? 'Loading…' : '$total medicines in the catalogue',
-                        style: const TextStyle(color: AppColors.textMuted),
+                        'Medicine catalogue',
+                        style: TextStyle(
+                          fontSize: compact ? 22 : 30,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
+                      if (!compact) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          total == null ? 'Loading…' : '$total medicines in the catalogue',
+                          style: const TextStyle(color: AppColors.textMuted),
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 FilledButton.icon(
                   onPressed: () => _openMedicine('new'),
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add medicine'),
+                  label: Text(compact ? 'Add' : 'Add medicine'),
                   style: TabletControls.actionFilled(),
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.lg),
+            SizedBox(height: compact ? AppSpacing.md : AppSpacing.lg),
             _StatusChips(
               all: rows.value,
               status: filter.status,
               counts: view.value?.statusCounts,
+              compact: compact,
             ),
-            const SizedBox(height: AppSpacing.md),
+            SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
             _Toolbar(
               search: _search,
               onSearchChanged: _onSearchChanged,
               onClearSearch: _clearSearch,
               filter: filter,
+              compact: compact,
             ),
-            const SizedBox(height: AppSpacing.lg),
+            SizedBox(height: compact ? AppSpacing.md : AppSpacing.lg),
             Expanded(
               child: Card(
                 clipBehavior: Clip.antiAlias,
@@ -174,11 +185,11 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Padding(
-                              padding: const EdgeInsets.symmetric(
+                              padding: EdgeInsets.symmetric(
                                 horizontal: AppSpacing.lg,
-                                vertical: AppSpacing.md,
+                                vertical: compact ? AppSpacing.sm : AppSpacing.md,
                               ),
-                              child: _ListBar(view: v, filter: filter),
+                              child: _ListBar(view: v, filter: filter, compact: compact),
                             ),
                             const Divider(height: 1),
                             Expanded(
@@ -186,6 +197,7 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                                 rows: v.rows,
                                 selectedId: selected,
                                 filter: filter,
+                                compact: compact,
                                 onOpen: _openMedicine,
                               ),
                             ),
@@ -209,11 +221,17 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
 
 // Status filter chips (counts when available)
 class _StatusChips extends ConsumerWidget {
-  const _StatusChips({required this.all, required this.status, required this.counts});
+  const _StatusChips({
+    required this.all,
+    required this.status,
+    required this.counts,
+    this.compact = false,
+  });
 
   final List<CatalogueMedicine>? all;
   final String? status;
   final Map<String?, int>? counts;
+  final bool compact;
 
   static const _tabs = <(String, String?)>[
     ('All', null),
@@ -231,17 +249,37 @@ class _StatusChips extends ConsumerWidget {
       return all!.where((m) => value == null || m.status == value).length;
     }
 
+    final chips = [
+      for (final (label, value) in _tabs)
+        AppChip(
+          label: compact
+              ? (status == value
+                  ? (all == null && counts == null ? label : '$label (${countFor(value)})')
+                  : label)
+              : (all == null && counts == null ? label : '$label (${countFor(value)})'),
+          selected: status == value,
+          onSelected: (_) => setStatus(value),
+        ),
+    ];
+
+    if (compact) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < chips.length; i++) ...[
+              if (i > 0) const SizedBox(width: AppSpacing.sm),
+              chips[i],
+            ],
+          ],
+        ),
+      );
+    }
+
     return Wrap(
       spacing: AppSpacing.sm,
       runSpacing: AppSpacing.sm,
-      children: [
-        for (final (label, value) in _tabs)
-          AppChip(
-            label: all == null && counts == null ? label : '$label (${countFor(value)})',
-            selected: status == value,
-            onSelected: (_) => setStatus(value),
-          ),
-      ],
+      children: chips,
     );
   }
 }
@@ -253,38 +291,56 @@ class _Toolbar extends ConsumerWidget {
     required this.onSearchChanged,
     required this.onClearSearch,
     required this.filter,
+    this.compact = false,
   });
 
   final TextEditingController search;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onClearSearch;
   final CatalogueFilter filter;
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final field = SizedBox(
+      height: TabletControls.toolbarHeight,
+      child: TextField(
+        controller: search,
+        onChanged: onSearchChanged,
+        textInputAction: TextInputAction.search,
+        decoration: TabletControls.searchDecoration(
+          hint: compact
+              ? 'Search medicines'
+              : 'Brand, generic name, or registration number',
+          suffixIcon: search.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Clear search',
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: onClearSearch,
+                ),
+        ),
+      ),
+    );
+
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          field,
+          const SizedBox(height: AppSpacing.sm),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _MoreFilters(filter: filter, compact: true),
+          ),
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: SizedBox(
-            height: TabletControls.toolbarHeight,
-            child: TextField(
-              controller: search,
-              onChanged: onSearchChanged,
-              textInputAction: TextInputAction.search,
-              decoration: TabletControls.searchDecoration(
-                hint: 'Brand, generic name, or registration number',
-                suffixIcon: search.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear search',
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: onClearSearch,
-                      ),
-              ),
-            ),
-          ),
-        ),
+        Expanded(child: field),
         const SizedBox(width: AppSpacing.sm),
         _MoreFilters(filter: filter),
       ],
@@ -294,9 +350,10 @@ class _Toolbar extends ConsumerWidget {
 
 // Classification and FDA check filters
 class _MoreFilters extends ConsumerWidget {
-  const _MoreFilters({required this.filter});
+  const _MoreFilters({required this.filter, this.compact = false});
 
   final CatalogueFilter filter;
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -349,7 +406,11 @@ class _MoreFilters extends ConsumerWidget {
         onPressed: () {},
         style: buttonStyle,
         icon: const Icon(Icons.filter_list, size: 18),
-        label: Text(active > 0 ? 'More filters ($active)' : 'More filters'),
+        label: Text(
+          compact
+              ? (active > 0 ? 'Filters ($active)' : 'Filters')
+              : (active > 0 ? 'More filters ($active)' : 'More filters'),
+        ),
       ),
     );
   }
@@ -357,10 +418,11 @@ class _MoreFilters extends ConsumerWidget {
 
 // "Showing 1–10 of 128", sort, items per page, and page numbers
 class _ListBar extends ConsumerWidget {
-  const _ListBar({required this.view, required this.filter});
+  const _ListBar({required this.view, required this.filter, this.compact = false});
 
   final CatalogueView view;
   final CatalogueFilter filter;
+  final bool compact;
 
   static const _sortLabels = {
     CatalogueSort.generic: 'Generic name',
@@ -368,49 +430,67 @@ class _ListBar extends ConsumerWidget {
     CatalogueSort.registration: 'Registration no.',
   };
 
+  static const _sortLabelsCompact = {
+    CatalogueSort.generic: 'Generic',
+    CatalogueSort.brand: 'Brand',
+    CatalogueSort.registration: 'Reg. no.',
+  };
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(catalogueFilterProvider.notifier);
     const muted = TextStyle(color: AppColors.textMuted);
+    final sortItems = compact ? _sortLabelsCompact : _sortLabels;
 
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: AppSpacing.lg,
-      runSpacing: AppSpacing.sm,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Showing ${view.firstShown}–${view.lastShown} of ${view.matching} '
-            '${view.matching == 1 ? 'medicine' : 'medicines'}', style: muted),
+        Text(
+          compact
+              ? '${view.firstShown}–${view.lastShown} of ${view.matching}'
+              : 'Showing ${view.firstShown}–${view.lastShown} of ${view.matching} '
+                  '${view.matching == 1 ? 'medicine' : 'medicines'}',
+          style: muted,
+        ),
+        const SizedBox(height: AppSpacing.sm),
         Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: AppSpacing.lg,
+          spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: [
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              const Text('Sort by: ', style: muted),
-              _Select<CatalogueSort>(
-                value: filter.sort,
-                items: {for (final e in _sortLabels.entries) e.key: e.value},
-                onChanged: (s) => notifier.setSort(s, ascending: filter.ascending),
-              ),
-              IconButton(
-                tooltip: filter.ascending ? 'A to Z' : 'Z to A',
-                visualDensity: VisualDensity.compact,
-                onPressed: () => notifier.toggleSort(filter.sort),
-                icon: Icon(filter.ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 18),
-              ),
-            ]),
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              const Text('Items per page: ', style: muted),
+            if (!compact) const Text('Sort by:', style: muted),
+            _Select<CatalogueSort>(
+              value: filter.sort,
+              items: {for (final e in sortItems.entries) e.key: e.value},
+              onChanged: (s) => notifier.setSort(s, ascending: filter.ascending),
+            ),
+            IconButton(
+              tooltip: filter.ascending ? 'A to Z' : 'Z to A',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => notifier.toggleSort(filter.sort),
+              icon: Icon(filter.ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 18),
+            ),
+            if (!compact) const Text('Items per page:', style: muted),
+            if (!compact)
               _Select<int>(
                 value: filter.perPage,
                 items: const {10: '10', 25: '25', 50: '50'},
                 onChanged: notifier.setPerPage,
               ),
-            ]),
-            _Pager(page: view.page, pageCount: view.pageCount, onPage: notifier.setPage),
           ],
         ),
+        if (view.pageCount > 1) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _Pager(
+              page: view.page,
+              pageCount: view.pageCount,
+              onPage: notifier.setPage,
+              compact: compact,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -451,11 +531,17 @@ class _Select<T> extends StatelessWidget {
 
 // Previous, page numbers (with gaps when there are many), next
 class _Pager extends StatelessWidget {
-  const _Pager({required this.page, required this.pageCount, required this.onPage});
+  const _Pager({
+    required this.page,
+    required this.pageCount,
+    required this.onPage,
+    this.compact = false,
+  });
 
   final int page; // zero-based
   final int pageCount;
   final ValueChanged<int> onPage;
+  final bool compact;
 
   // Pages to show, zero-based; null marks a gap
   List<int?> get _numbers {
@@ -492,6 +578,32 @@ class _Pager extends StatelessWidget {
     }
 
     final first = page == 0, last = page >= pageCount - 1;
+
+    if (compact) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          box(
+            tooltip: 'Previous page',
+            onTap: first ? null : () => onPage(page - 1),
+            child: Icon(Icons.chevron_left, size: 20, color: first ? AppColors.border : AppColors.text),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            child: Text(
+              '${page + 1} / $pageCount',
+              style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textMuted),
+            ),
+          ),
+          box(
+            tooltip: 'Next page',
+            onTap: last ? null : () => onPage(page + 1),
+            child: Icon(Icons.chevron_right, size: 20, color: last ? AppColors.border : AppColors.text),
+          ),
+        ],
+      );
+    }
+
     return Row(mainAxisSize: MainAxisSize.min, children: [
       box(
         tooltip: 'Previous page',
@@ -525,20 +637,50 @@ class _Pager extends StatelessWidget {
 // The catalogue table: registration, generic, brand, strength and form,
 // classification, status, and actions
 class _Table extends ConsumerWidget {
-  const _Table({required this.rows, required this.selectedId, required this.filter, required this.onOpen});
+  const _Table({
+    required this.rows,
+    required this.selectedId,
+    required this.filter,
+    required this.compact,
+    required this.onOpen,
+  });
 
   final List<CatalogueMedicine> rows;
   final String? selectedId;
   final CatalogueFilter filter;
+  final bool compact;
   final void Function(String id) onOpen;
 
   static const _sortColumns = [CatalogueSort.registration, CatalogueSort.generic, CatalogueSort.brand];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _CatalogueTableHeader(compact: true),
+          Expanded(
+            child: ListView.separated(
+              itemCount: rows.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final m = rows[index];
+                return _CatalogueRow(
+                  medicine: m,
+                  compact: true,
+                  selected: m.id == selectedId,
+                  onOpen: () => onOpen(m.id),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
     final notifier = ref.read(catalogueFilterProvider.notifier);
 
-    // A text cell capped in width that wraps to at most two lines
     DataCell cell(String text, double maxWidth, {TextStyle? style}) => DataCell(ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
           child: Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: style),
@@ -556,7 +698,6 @@ class _Table extends ConsumerWidget {
     }
 
     return LayoutBuilder(builder: (context, constraints) {
-      // Scroll sideways instead of squeezing cells when it doesn't fit
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
@@ -597,10 +738,14 @@ class _Table extends ConsumerWidget {
                     cell(medicineClassification(m.isRx), 170),
                     DataCell(medicineStatusBadge(m.status)),
                     DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-                      OutlinedButton(
+                      IconButton(
+                        tooltip: 'View medicine',
                         onPressed: () => onOpen(m.id),
-                        style: TabletControls.toolbarOutlined(),
-                        child: const Text('View'),
+                        icon: Icon(
+                          m.id == selectedId ? Icons.visibility : Icons.visibility_outlined,
+                          size: 20,
+                          color: m.id == selectedId ? AppColors.primary : AppColors.textMuted,
+                        ),
                       ),
                       PopupMenuButton<String>(
                         tooltip: 'More actions',
@@ -620,6 +765,135 @@ class _Table extends ConsumerWidget {
         ),
       );
     });
+  }
+}
+
+class _CatalogueTableHeader extends StatelessWidget {
+  const _CatalogueTableHeader({required this.compact});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget cell(String text, {int flex = 1}) => Expanded(
+          flex: flex,
+          child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+        );
+
+    return Container(
+      color: AppColors.primaryLight,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      child: Row(
+        children: [
+          cell('MEDICINE', flex: 6),
+          cell('STATUS', flex: 3),
+          const SizedBox(
+            width: 48,
+            child: Text('VIEW', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CatalogueRow extends StatelessWidget {
+  const _CatalogueRow({
+    required this.medicine,
+    required this.compact,
+    required this.selected,
+    required this.onOpen,
+  });
+
+  final CatalogueMedicine medicine;
+  final bool compact;
+  final bool selected;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = medicine;
+    final title = compact
+        ? '${m.brandName} · ${m.genericName}'
+        : m.brandName;
+    final subtitle = compact
+        ? [
+            if (m.registrationNumber != null) m.registrationNumber!,
+            '${m.strength} ${m.dosageForm}',
+          ].join(' · ')
+        : null;
+
+    return Material(
+      color: selected ? AppColors.primaryLight.withValues(alpha: 0.45) : Colors.transparent,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 6,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: compact ? 14 : 15,
+                        color: selected ? AppColors.primary : null,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: medicineStatusBadge(m.status),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 48,
+                child: Align(
+                  alignment: Alignment.center,
+                  child: IconButton(
+                    tooltip: 'View medicine',
+                    onPressed: onOpen,
+                    visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(
+                      fixedSize: const Size(40, 40),
+                      backgroundColor: selected ? AppColors.primary : Colors.white,
+                      foregroundColor: selected ? Colors.white : AppColors.textMuted,
+                      side: BorderSide(color: selected ? AppColors.primary : AppColors.border),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                    icon: Icon(selected ? Icons.visibility : Icons.visibility_outlined, size: 20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

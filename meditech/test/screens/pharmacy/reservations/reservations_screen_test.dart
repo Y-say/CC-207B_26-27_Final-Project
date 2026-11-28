@@ -44,13 +44,17 @@ void main() {
     expect(find.text('10 of 10 reservations'), findsWidgets);
 
     // Verify first row contents from demo data
-    expect(find.text('RM-103026-0005'), findsOneWidget);
-    expect(find.text('Grace Villanueva'), findsOneWidget);
+    expect(
+      find.textContaining('RM-103026-0005 · Grace Villanueva'),
+      findsOneWidget,
+    );
     expect(find.text('Amoxil × 21'), findsOneWidget);
 
     // Verify second row
-    expect(find.text('RM-103026-0004'), findsOneWidget);
-    expect(find.text('Paolo Gomez'), findsOneWidget);
+    expect(
+      find.textContaining('RM-103026-0004 · Paolo Gomez'),
+      findsOneWidget,
+    );
     expect(find.text('Biogesic × 20 + 1 more'), findsOneWidget);
   });
 
@@ -77,16 +81,16 @@ void main() {
     await tester.enterText(searchField, 'Luke');
     await tester.pumpAndSettle();
 
-    expect(find.text('Luke Dela Cruz'), findsOneWidget);
-    expect(find.text('Grace Villanueva'), findsNothing);
+    expect(find.textContaining('Luke Dela Cruz'), findsOneWidget);
+    expect(find.textContaining('Grace Villanueva'), findsNothing);
     expect(find.text('1 of 10 reservations'), findsWidgets);
 
     // Search by reference "RM-102726"
     await tester.enterText(searchField, 'RM-102726');
     await tester.pumpAndSettle();
 
-    expect(find.text('Liza Mendoza'), findsOneWidget);
-    expect(find.text('Luke Dela Cruz'), findsNothing);
+    expect(find.textContaining('Liza Mendoza'), findsOneWidget);
+    expect(find.textContaining('Luke Dela Cruz'), findsNothing);
   });
 
   testWidgets('toggles filter panel and applies status filter',
@@ -139,9 +143,9 @@ void main() {
 
     // Now only pending reservations (3 in demo data) should be visible
     expect(find.text('3 of 10 reservations'), findsWidgets);
-    expect(find.text('Grace Villanueva'), findsOneWidget);
-    expect(find.text('Paolo Gomez'), findsOneWidget);
-    expect(find.text('Mark Sison'), findsOneWidget);
+    expect(find.textContaining('Grace Villanueva'), findsOneWidget);
+    expect(find.textContaining('Paolo Gomez'), findsOneWidget);
+    expect(find.textContaining('Mark Sison'), findsOneWidget);
     expect(find.text('Carmela Reyes'), findsNothing); // Confirmed
   });
 }

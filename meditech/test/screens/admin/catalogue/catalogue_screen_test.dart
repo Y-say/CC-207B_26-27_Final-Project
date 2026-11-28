@@ -55,7 +55,7 @@ void main() {
     expect(find.text('500 mg Capsule'), findsOneWidget);
     expect(find.text('Prescription Drug (Rx)'), findsOneWidget);
     expect(find.text('Open details'), findsNothing); // in hidden popup menu only
-    expect(find.text('View'), findsOneWidget);
+    expect(find.byTooltip('View medicine'), findsOneWidget);
     expect(find.text('Showing 1–1 of 1 medicine'), findsOneWidget);
   });
 
@@ -112,6 +112,41 @@ void main() {
     await tester.tap(find.byTooltip('Next page'));
     await tester.pumpAndSettle();
     expect(find.text('Showing 11–12 of 12 medicines'), findsOneWidget);
+  });
+
+  // Side drawer open: essential columns only, no horizontal squeeze overflow
+  testWidgets('drawer open uses compact table without overflow', (tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final container = ProviderContainer(
+      overrides: [catalogueListProvider.overrideWith((ref) async => [med('1')])],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Scaffold(
+            body: Row(
+              children: [
+                const Expanded(child: CatalogueScreen(drawerInShell: true)),
+                const SizedBox(width: 460),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    container.read(selectedMedicineProvider.notifier).select('1');
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('MEDICINE'), findsOneWidget);
+    expect(find.text('Registration No.'), findsNothing);
+    expect(find.byTooltip('View medicine'), findsOneWidget);
   });
 
   // Narrow screens keep every must-have column, scrolling sideways instead of overflowing
